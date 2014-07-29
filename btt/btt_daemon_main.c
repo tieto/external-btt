@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Tieto Corporation
+ * Copyright 2013-2014 Tieto Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 #include "btt.h"
 #include <signal.h>
+#include <sys/capability.h>
+
 #include "btt_utils.h"
 
 #include "btt_daemon_main.h"
 #include "btt_daemon_adapter.h"
-#include "btt_daemon_l2cap.h"
 #include "btt_daemon_misc.h"
-#include "btt_daemon_sdp.h"
 #include "btt_adapter.h"
 
 static pthread_t callback_thread;
@@ -30,7 +30,6 @@ static int socket_agent;
 static int socket_remote;
 
 const bt_interface_t   *bluetooth_if = NULL;
-const test_interface_t *test_if      = NULL;
 
 static void run_daemon_help(int argc, char **argv);
 static void run_daemon_start(int argc, char **argv) ;
@@ -511,6 +510,11 @@ static void btt_cb_dut_mode_recv(uint16_t opcode, uint8_t *buf, uint8_t len)
     BTT_LOG_I("Callback Dut Mode Recv");
 }
 
+static void btt_cb_le_test_mode(bt_status_t status, uint16_t num_packets)
+{
+    BTT_LOG_I("Callback LE test mode");
+}
+
 static bt_callbacks_t sBluetoothCallbacks = {
     sizeof(sBluetoothCallbacks),
     btt_cb_adapter_state_changed,
@@ -523,7 +527,8 @@ static bt_callbacks_t sBluetoothCallbacks = {
     btt_cb_bond_state_changed,
     btt_cb_acl_state_changed,
     btt_cb_thread_event,
-    btt_cb_dut_mode_recv
+    btt_cb_dut_mode_recv,
+    btt_cb_le_test_mode
 };
 
 static void config_permissions(void)
@@ -592,8 +597,6 @@ static int start_bluedroid_hal(void)
     BTT_LOG_I("HAL library loaded (%s)", strerror(err));
     status = bluetooth_if->init(&sBluetoothCallbacks);
     BTT_LOG_I("HAL Status %i", status);
-
-    test_if = bluetooth_if->get_profile_interface(BT_PROFILE_TEST_ID);
 #endif
     return 0;
 }
@@ -781,36 +784,8 @@ void run_daemon_start(int argc, char **argv)
             break;
         }
 
-        if (!test_if) {
-            struct btt_message btt_rsp;
-
-            BTT_LOG_E("No test interface. Ignoring command.\n");
-
-            btt_rsp.command = BTT_RSP_ERROR_NO_TEST_INTERFACE;
-            btt_rsp.length  = 0;
-
-            if (send(socket_remote, (const char *)&btt_rsp,
-                             sizeof(struct btt_message), 0) == -1) {
-                BTT_LOG_E("%s:System Socket Error 3\n", __FUNCTION__);
-            }
-            close(socket_remote);
-            continue;
-        }
-
         /*start to handle different command here.*/
-        if (btt_msg.command > BTT_L2CAP_CMD_RSP_START &&
-            btt_msg.command < BTT_L2CAP_CMD_RSP_END) {
-            handle_l2cap_cmd(&btt_msg, socket_remote);
-        } else if (btt_msg.command > BTT_SDP_CMD_RSP_START &&
-                   btt_msg.command < BTT_SDP_CMD_RSP_END) {
-            handle_sdp_cmd(&btt_msg, socket_remote);
-            /*
-             * handle_sdp_cmd() calls synchronous methods to handle SDP
-             * commands, so we can close socket here
-             */
-            close(socket_remote);
-            continue;
-        } else if (btt_msg.command > BTT_ADAPTER_CMD_RSP_START &&
+        if (btt_msg.command > BTT_ADAPTER_CMD_RSP_START &&
                    btt_msg.command < BTT_ADAPTER_CMD_RSP_END) {
             handle_adapter_cmd(&btt_msg, socket_remote);
         } else if (btt_msg.command > BTT_MISC_CMD_RSP_START &&

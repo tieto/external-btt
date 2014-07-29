@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Tieto Corporation
+ * Copyright 2013-2014 Tieto Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,6 @@
 
 #include "btt.h"
 #include "btt_adapter.h"
-#include "btt_l2cap.h"
-#include "btt_sdp.h"
 #include "btt_rfcomm.h"
 #include "btt_tester.h"
 
@@ -95,8 +93,6 @@ static struct command commands[] = {
     { "daemon",  "", run_daemon  },
     { "tester",  "", run_tester  },
     { "adapter", "", run_adapter },
-    { "l2cap",   "", run_l2cap   },
-    { "sdp",     "", run_sdp     },
     { "rfcomm",  "", run_rfcomm  }
 };
 

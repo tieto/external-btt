@@ -6,16 +6,12 @@ CONFIG=-DWITHOUT_STACK -DDEVELOPMENT_VERSION=1
 DEBUG_FLAGS=-Wall -Wextra -Werror -Wno-unused -O0 -g
 
 BTT_OBJ= \
-btt_daemon_l2cap.c \
-btt_daemon_sdp.c \
 btt_daemon_adapter.c \
 btt_daemon_misc.c \
 btt_daemon_main.c \
 btt_main.c \
 btt_adapter.c \
 btt_rfcomm.c   \
-btt_sdp.c \
-btt_l2cap.c \
 btt_tester.c \
 btt_utils.c
 
