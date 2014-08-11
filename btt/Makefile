@@ -11,10 +11,7 @@ btt_daemon_misc.c \
 btt_daemon_main.c \
 btt_main.c \
 btt_adapter.c \
-btt_rfcomm.c   \
-btt_tester.c \
 btt_utils.c
-
 
 ALL_OBJ= $(BTT_OBJ) \
 btt_sdp_external.c
