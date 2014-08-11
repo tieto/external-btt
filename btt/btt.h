@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Tieto Corporation
+ * Copyright 2013-2014 Tieto Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,6 @@
 /* NOTE: Required by Bluedroid, but this is part of Android, do not forget to
  *       copy them (and other) on other platform */
 #include <hardware/bluetooth.h>
-#include <hardware/bt_test.h>
 
 #define BTT_DIRECTORY_NAME     ".btt"
 #define BTT_SOCKET_NAME        "btt.socket"
@@ -157,26 +156,7 @@ enum btt_command {
     BTT_CMD_DAEMON_STOP,
     BTT_DAEMON_END,
     BTT_DAEMON_CMD_RSP_END,
-    
-    BTT_SDP_CMD_RSP_START = 200,
-    BTT_CMD_SDP_GET_NUMBER_OF_RECORDS,
-    BTT_RSP_SDP_GET_NUMBER_OF_RECORDS,
-    BTT_CMD_SDP_CREATE_RECORD,
-    BTT_RSP_SDP_CREATE_RECORD,
-    BTT_CMD_SDP_DELETE_RECORD,
-    BTT_CMD_SDP_CONNECT,
-    BTT_CMD_SDP_DISCONNECT,
-    BTT_CMD_SDP_SEND,
-    BTT_CMD_SDP_PRINT_REMOTE_RECORDS,
-    BTT_CMD_SDP_PRINT_RECORDS,
-    BTT_RSP_SDP_PRINT_RECORDS,
-    BTT_CMD_SDP_ADD_RFCOMM_RECORD,
-    BTT_CMD_SDP_ADD_ATTRIBUTE,
-    BTT_CMD_SDP_DELETE_ATTRIBUTE,
-    BTT_CMD_SDP_TRACE_LEVEL,
-    BTT_RSP_SDP_TRACE_LEVEL,
-    BTT_SDP_CMD_RSP_END,
-    
+
     BTT_ADAPTER_CMD_RSP_START =300,
     BTT_CMD_ADAPTER_UP,
     BTT_CMD_ADAPTER_DOWN,
@@ -187,17 +167,8 @@ enum btt_command {
     BTT_CMD_ADAPTER_PAIR,
     BTT_CMD_ADAPTER_UNPAIR,
     BTT_ADAPTER_CMD_RSP_END,
-    
-    BTT_L2CAP_CMD_RSP_START = 400,
-    BTT_L2CAP_CONNECT,
-    BTT_L2CAP_DISCONNECT,
-    BTT_L2CAP_WRITE,
-    BTT_L2CAP_LISTEN,
-    BTT_L2CAP_PING,
-    BTT_L2CAP_CMD_RSP_END,
 
     BTT_MISC_CMD_RSP_START = 900,
-    BTT_CMD_TESTER_DUMP,
     BTT_RSP_AGENT_SSP_REPLY,
     BTT_RSP_AGENT_PIN_REPLY,
     BTT_MISC_CMD_RSP_END,
@@ -291,112 +262,6 @@ static const struct ext_command_item ext_command_map[] = {
 #else
     #include <netinet/in.h>
 #endif
-
-struct btt_msg_rsp_sdp_get_records_num {
-    struct btt_message hdr;
-
-    unsigned int records;
-    unsigned int max_records;
-};
-
-struct btt_msg_rsp_sdp_create_record {
-    struct btt_message hdr;
-
-    unsigned int handle;
-};
-
-struct btt_msg_cmd_sdp_delete_record {
-    struct btt_message hdr;
-
-    unsigned int handle;
-};
-
-struct btt_msg_cmd_sdp_connect {
-    struct btt_message hdr;
-
-    unsigned char bd_addr[BD_ADDR_LEN];
-};
-
-struct btt_msg_cmd_sdp_send {
-    struct btt_message hdr;
-
-    unsigned int  handle;
-    unsigned int  length;
-    unsigned char data[0];
-};
-
-struct btt_msg_cmd_sdp_disconnect {
-    struct btt_message hdr;
-
-    unsigned int handle;
-};
-
-struct btt_msg_rsp_sdp_get_records {
-    struct btt_message hdr;
-
-    unsigned int records_num;
-    struct sdp_test_records records[0];
-};
-
-struct btt_msg_cmd_sdp_add_rfcomm_record {
-    struct btt_message hdr;
-
-    char    name[NAME_MAX_LEN+1];
-    uint8_t uuid[UUID_LEN];
-    uint8_t channel;
-};
-
-struct btt_msg_cmd_sdp_delete_attribute {
-    struct btt_message hdr;
-
-    unsigned int handle;
-    unsigned int attribute_id;
-};
-
-struct btt_msg_cmd_sdp_add_attribute {
-    struct btt_message hdr;
-
-    unsigned int  handle;
-    unsigned int  attribute_id;
-    unsigned char type;
-    unsigned char length;
-    unsigned char data[0];
-};
-
-struct btt_msg_cmd_sdp_trace_level {
-    struct btt_message hdr;
-
-    unsigned char level;
-};
-
-struct btt_msg_rsp_sdp_trace_level {
-    struct btt_message hdr;
-
-    unsigned char level;
-};
-
-enum sdp_print_remote_records_type {
-    PRINT_RECORDS_PUBLIC,
-    PRINT_RECORDS_ALL,
-    PRINT_RECORDS_RECORD_HANDLE,
-    PRINT_RECORDS_UUID
-};
-
-struct btt_msg_cmd_sdp_print_remote_records {
-    struct btt_message hdr;
-
-    unsigned char bd_addr[BD_ADDR_LEN];
-    enum sdp_print_remote_records_type type;
-    union btt_msg_cmd_sdp_print_remote_records_data data;
-};
-
-struct btt_msg_cmd_tester_dump {
-    struct btt_message hdr;
-
-    unsigned int type;
-    char name[NAME_MAX_LEN+1];
-
-};
 
 struct btt_msg_cmd_adapter_scan_mode {
     struct btt_message hdr;

@@ -21,8 +21,6 @@
 
 #include "btt.h"
 #include "btt_adapter.h"
-#include "btt_rfcomm.h"
-#include "btt_tester.h"
 
 #include "btt_daemon_main.h"
 #include "btt_utils.h"
@@ -91,9 +89,7 @@ static void run_help(int argc, char **argv);
 static struct command commands[] = {
     { "help",    "", run_help    },
     { "daemon",  "", run_daemon  },
-    { "tester",  "", run_tester  },
-    { "adapter", "", run_adapter },
-    { "rfcomm",  "", run_rfcomm  }
+    { "adapter", "", run_adapter }
 };
 
 #define UI_SUPPORTED_COMMANDS sizeof(commands)/sizeof(struct command)
