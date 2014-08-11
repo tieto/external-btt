@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Tieto Corporation
+ * Copyright 2013-2014 Tieto Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,3 +27,17 @@ extern struct btt_message *btt_send_command(struct btt_message *msg);
 extern struct btt_message *btt_send_ext_command(struct ext_btt_message *ext_cmd,
                                                 char *data, int data_len);
 
+struct list_element
+{
+	void *data;
+	struct list_element *next;
+};
+
+void (*data_destroy)(void *);
+bool (*equal)(void *, void *);
+extern struct list_element *list_init(void);
+extern bool list_contains(struct list_element *list, void *data,
+		bool (*equal)(void *, void *));
+extern struct list_element *list_append(struct list_element *list,void *data);
+struct list_element *list_clear(struct list_element *list,
+		void (*data_destroy)(void *));
