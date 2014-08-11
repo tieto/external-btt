@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Tieto Corporation
+ * Copyright 2013-2014 Tieto Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 
 #include "btt.h"
+#include "btt_utils.h"
 #include "btt_daemon_main.h"
 
 void print_commands(const struct command *commands, unsigned int cmds_num)
@@ -299,3 +300,80 @@ struct btt_message *btt_send_ext_command(struct ext_btt_message *ext_cmd,
     return NULL;
 }
 
+struct list_element *list_init(void)
+{
+	struct list_element *list = NULL;
+
+	list = malloc(sizeof(struct list_element));
+	list->next = NULL;
+
+	return list;
+}
+
+bool list_contains(struct list_element *list, void *data,
+		bool (*equal)(void *, void *))
+{
+	struct list_element *el = list;
+
+	if (!list)
+		return FALSE;
+
+	for (; el; el = el->next)
+		if ((*equal)(el->data, data))
+			return TRUE;
+
+	return FALSE;
+}
+
+struct list_element *list_append(struct list_element *list, void *data)
+{
+	struct list_element *new_el;
+	struct list_element *tmp;
+
+	new_el = malloc(sizeof(struct list_element));
+
+	if (!new_el) {
+		BTT_LOG_E("List adding - malloc error.\n");
+		return NULL;
+	}
+
+	if (!list) {
+		list = list_init();
+
+		if (list)
+			list->data = data;
+
+		/*if malloc in init failed, NULL is returned*/
+		return list;
+	}
+
+	tmp = list;
+
+	for (; tmp->next; tmp = tmp->next) {
+		/* just iterate */
+	}
+
+	new_el->data = data;
+	new_el->next = NULL;
+	tmp->next = new_el;
+
+	return list;
+}
+
+struct list_element *list_clear(struct list_element *list,
+		void (*data_destroy)(void *))
+{
+	struct list_element *tmp;
+
+	if (!list)
+		return NULL;
+
+	do {
+		(*data_destroy)(list->data);
+		tmp = list->next;
+		free(list);
+		list = tmp;
+	} while (tmp);
+
+	return NULL;
+}
