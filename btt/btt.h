@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-#ifdef BTT_H
-#error Included twice.
-#endif
+#ifndef BTT_H
 #define BTT_H
 
 #define FALSE 0
@@ -299,3 +297,4 @@ extern int hexlines_to_data(int i_arg, int argc, char **argv,
 		unsigned char *data);
 extern void print_bdaddr(uint8_t *source);
 
+#endif
