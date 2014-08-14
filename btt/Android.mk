@@ -4,6 +4,7 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES :=  btt_daemon_adapter.c \
                     btt_daemon_misc.c \
+                    btt_daemon_gatt_client.c \
                     btt_daemon_main.c \
                     btt_main.c \
                     btt_adapter.c \
