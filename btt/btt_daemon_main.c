@@ -17,19 +17,27 @@
 #include "btt.h"
 #include <signal.h>
 #include <sys/capability.h>
+#include <hardware/bt_gatt.h>
 
 #include "btt_utils.h"
 
 #include "btt_daemon_main.h"
 #include "btt_daemon_adapter.h"
 #include "btt_daemon_misc.h"
+#include "btt_daemon_gatt_client.h"
 #include "btt_adapter.h"
+#include "btt_gatt_client.h"
 
+static btgatt_callbacks_t sGattCallbacks;
 static pthread_t callback_thread;
 static int socket_agent;
-static int socket_remote;
+int socket_remote;
 
-const bt_interface_t   *bluetooth_if = NULL;
+const bt_interface_t *bluetooth_if = NULL;
+const btgatt_interface_t *gatt_if = NULL;
+const btgatt_client_interface_t *gatt_client_if = NULL;
+
+struct list_element *list = NULL;
 
 static void run_daemon_help(int argc, char **argv);
 static void run_daemon_start(int argc, char **argv) ;
@@ -39,6 +47,7 @@ static void run_daemon_status(int argc, char **argv);
 static void run_daemon_generic(const struct command *commands,
 		unsigned int number_of_commands,
 		void (*help)(int argc, char **argv), int argc, char **argv);
+static void btgatt_callbacks_init();
 
 static struct command daemon_commands[] = {
 		{"help",   "",            run_daemon_help},
@@ -596,6 +605,15 @@ static int start_bluedroid_hal(void)
 
 	BTT_LOG_I("HAL library loaded (%s)", strerror(err));
 	status = bluetooth_if->init(&sBluetoothCallbacks);
+	gatt_if = bluetooth_if->get_profile_interface(BT_PROFILE_GATT_ID);
+
+	if(gatt_if)
+	{
+		btgatt_callbacks_init();
+		gatt_if->init(&sGattCallbacks);
+		gatt_client_if = gatt_if->client;
+	}
+
 	BTT_LOG_I("HAL Status %i", status);
 #endif
 	return 0;
@@ -791,6 +809,10 @@ void run_daemon_start(int argc, char **argv)
 		} else if (btt_msg.command > BTT_MISC_CMD_RSP_START &&
 				btt_msg.command < BTT_MISC_CMD_RSP_END) {
 			handle_misc_cmd(&btt_msg, socket_remote);
+		} else if (btt_msg.command > BTT_GATT_CLIENT_CMD_RSP_START &&
+				btt_msg.command < BTT_GATT_CLIENT_CMD_RSP_END) {
+			list = list_clear(list, free);
+			handle_gatt_client_cmd(&btt_msg, socket_remote);
 		} else {
 			BTT_LOG_W("Unknown command=%u with length=%u\n",
 					btt_msg.command, btt_msg.length);
@@ -837,6 +859,9 @@ void run_daemon_stop(int argc, char **argv)
 	ext_cmd.sub_cmd = BTT_EXT_DAEMON_STOP_CMD;
 	btt_send_ext_command(&ext_cmd, NULL, 0);
 	free(msg_rsp);
+
+	/*free list*/
+	list_clear(list, free);
 }
 
 void run_daemon_status(int argc, char **argv)
@@ -906,3 +931,11 @@ void run_daemon_restart(int argc, char **argv)
 	run_daemon_start(argc, argv);
 }
 
+/*initialization sGattCallbacks structure*/
+/*must be call before using this structure*/
+static void btgatt_callbacks_init()
+{
+	sGattCallbacks.size = sizeof(sGattCallbacks);
+	sGattCallbacks.client = getGattClientCallbacks();
+	sGattCallbacks.server = NULL;
+}
