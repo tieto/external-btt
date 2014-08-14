@@ -11,7 +11,8 @@ btt_daemon_misc.c \
 btt_daemon_main.c \
 btt_main.c \
 btt_adapter.c \
-btt_utils.c
+btt_utils.c \
+btt_gatt_client.c
 
 ALL_OBJ= $(BTT_OBJ) \
 btt_sdp_external.c
