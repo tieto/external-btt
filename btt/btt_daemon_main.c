@@ -25,6 +25,7 @@
 #include "btt_daemon_adapter.h"
 #include "btt_daemon_misc.h"
 #include "btt_daemon_gatt_client.h"
+#include "btt_daemon_gatt_server.h"
 #include "btt_adapter.h"
 #include "btt_gatt_client.h"
 
@@ -36,6 +37,7 @@ int socket_remote;
 const bt_interface_t *bluetooth_if = NULL;
 const btgatt_interface_t *gatt_if = NULL;
 const btgatt_client_interface_t *gatt_client_if = NULL;
+const btgatt_server_interface_t *gatt_server_if = NULL;
 
 struct list_element *list = NULL;
 
@@ -612,6 +614,7 @@ static int start_bluedroid_hal(void)
 		btgatt_callbacks_init();
 		gatt_if->init(&sGattCallbacks);
 		gatt_client_if = gatt_if->client;
+		gatt_server_if = gatt_if->server;
 	}
 
 	BTT_LOG_I("HAL Status %i", status);
@@ -813,6 +816,9 @@ void run_daemon_start(int argc, char **argv)
 				btt_msg.command < BTT_GATT_CLIENT_CMD_RSP_END) {
 			list = list_clear(list, free);
 			handle_gatt_client_cmd(&btt_msg, socket_remote);
+		} else if (btt_msg.command > BTT_GATT_SERVER_CMD_RSP_START &&
+				btt_msg.command < BTT_GATT_SERVER_CMD_RSP_END) {
+			handle_gatt_server_cmd(&btt_msg, socket_remote);
 		} else {
 			BTT_LOG_W("Unknown command=%u with length=%u\n",
 					btt_msg.command, btt_msg.length);
@@ -937,5 +943,5 @@ static void btgatt_callbacks_init()
 {
 	sGattCallbacks.size = sizeof(sGattCallbacks);
 	sGattCallbacks.client = getGattClientCallbacks();
-	sGattCallbacks.server = NULL;
+	sGattCallbacks.server = getGattServerCallbacks();
 }
