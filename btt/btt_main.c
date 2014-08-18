@@ -99,14 +99,15 @@ static struct command commands[] = {
 static void run_help(int argc, char **argv)
 {
 	BTT_LOG_S("BTT - Bluedroid Test Tool aka Bluetooth Test Tool\n"
-			"Copyright @ 2013 Tieto Corporation\n\n"
-			"Version: %u.%u.%u\n\n"
-			"Authors:\n"
-			"\t""Marcin Kraglak  <marcin.kraglak@tieto.com>\n"
-			"\t""Michal Labedzki <michal.labedzki@tieto.com>\n"
-			"\t""Wenjie Gong     <wenjie.gong@tieto.com>\n"
-			"\t""Tianxiang Mi    <tianxiang.mi@tieto.com>\n"
-			"\n", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE);
+		"Copyright @ 2013 Tieto Corporation\n\n"
+		"Version: %u.%u.%u\n\n"
+		"Authors:\n"
+		"\t""Marcin Kraglak         <marcin.kraglak@tieto.com>\n"
+		"\t""Michal Labedzki        <michal.labedzki@tieto.com>\n"
+		"\t""Wenjie Gong            <wenjie.gong@tieto.com>\n"
+		"\t""Tianxiang Mi           <tianxiang.mi@tieto.com>\n"
+		"\t""Aleksander Drewnicki   <ext.aleksander.drewnicki@tieto.com>\n"
+		"\n", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE);
 
 	print_commands(commands, UI_SUPPORTED_COMMANDS);
 	exit(EXIT_SUCCESS);
