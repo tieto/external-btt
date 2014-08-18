@@ -9,7 +9,8 @@ LOCAL_SRC_FILES :=  btt_daemon_adapter.c \
                     btt_main.c \
                     btt_adapter.c \
                     btt_utils.c \
-                    btt_gatt_client.c
+                    btt_gatt_client.c \
+                    btt_gatt_server.c
 
 LOCAL_MODULE := btt
 LOCAL_MODULE_TAGS := optional

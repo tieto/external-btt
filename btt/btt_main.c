@@ -22,6 +22,7 @@
 #include "btt.h"
 #include "btt_adapter.h"
 #include "btt_gatt_client.h"
+#include "btt_gatt_server.h"
 
 #include "btt_daemon_main.h"
 #include "btt_utils.h"
@@ -91,7 +92,8 @@ static struct command commands[] = {
 		{ "help",    "", run_help    },
 		{ "daemon",  "", run_daemon  },
 		{ "adapter", "", run_adapter },
-		{ "gatt_client","", run_gatt_client }
+		{ "gatt_client","", run_gatt_client },
+		{ "gatt_server", "", run_gatt_server }
 };
 
 #define UI_SUPPORTED_COMMANDS sizeof(commands)/sizeof(struct command)
