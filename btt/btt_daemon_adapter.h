@@ -15,7 +15,7 @@
  */
 
 #ifdef BTT_DAEMON_ADAPTER_H
-    #error Included twince
+#error Included twince
 #endif
 #define BTT_DAEMON_ADAPTER_H
 
@@ -23,5 +23,5 @@ extern bool turning_on_adapter;
 extern bool bonding_peer_dev;
 
 extern void handle_adapter_cmd(const struct btt_message *btt_msg_adapter,
-                               const int socket_remote);
+		const int socket_remote);
 

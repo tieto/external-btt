@@ -15,7 +15,7 @@
  */
 
 #ifdef BTT_DAEMON_MISC_H
-    #error Included twice
+#error Included twice
 #endif
 #define BTT_DAEMON_MISC_H
 

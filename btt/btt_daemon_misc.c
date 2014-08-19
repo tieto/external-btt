@@ -21,24 +21,24 @@ extern const bt_interface_t   *bluetooth_if;
 static int socket_remote_misc;
 
 void handle_misc_cmd(const struct btt_message* btt_msg_misc,
-                     const int socket_remote)
+		const int socket_remote)
 {
-    int length;
+	int length;
 
-    socket_remote_misc = socket_remote;
+	socket_remote_misc = socket_remote;
 
-    switch (btt_msg_misc->command) {
-    case BTT_RSP_AGENT_SSP_REPLY: {
-        struct btt_msg_cmd_agent_ssp msg;
+	switch (btt_msg_misc->command) {
+	case BTT_RSP_AGENT_SSP_REPLY: {
+		struct btt_msg_cmd_agent_ssp msg;
 
-        recv(socket_remote_misc, &msg, sizeof(msg), 0);
-        BTT_LOG_D("passkey:%d in %s\n", msg.passkey, __FUNCTION__);
-        bluetooth_if->ssp_reply((bt_bdaddr_t *)msg.addr,
-            (bt_ssp_variant_t) msg.variant, msg.accept, msg.passkey);
-        break;
-    }
-    default:
-            break;
-    }
+		recv(socket_remote_misc, &msg, sizeof(msg), 0);
+		BTT_LOG_D("passkey:%d in %s\n", msg.passkey, __FUNCTION__);
+		bluetooth_if->ssp_reply((bt_bdaddr_t *)msg.addr,
+				(bt_ssp_variant_t) msg.variant, msg.accept, msg.passkey);
+		break;
+	}
+	default:
+		break;
+	}
 }
 
