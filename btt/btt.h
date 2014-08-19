@@ -313,6 +313,22 @@ struct btt_msg_cmd_agent_pin {
 	uint8_t accept;
 };
 
+/* strings array for bt_status_t enum
+ * if that enum change, this array also should */
+static const char *bt_status_string[] = {
+		"SUCCESS",
+		"FAIL",
+		"NOT READY",
+		"NO MEMORY",
+		"BUSY",
+		"DONE",
+		"UNSUPORTED",
+		"INVALID PARAMETER",
+		"UNHANDLED",
+		"AUTHORISATION FAILURE",
+		"REMOTE DEVICE DOWN"
+};
+
 extern struct btt_message *btt_send_command(struct btt_message *msg);
 extern int get_hexlines_length(int i_arg, int argc, char **argv);
 extern int hexlines_to_data(int i_arg, int argc, char **argv,
