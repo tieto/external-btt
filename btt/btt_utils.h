@@ -15,17 +15,17 @@
  */
 
 #ifdef BTT_UTILS_H
-    #error Included twice
+#error Included twice
 #endif
 #define BTT_UTILS_H
 
 extern void print_commands(const struct command *commands,
-                           unsigned int cmds_num);
+		unsigned int cmds_num);
 extern void run_generic(const struct command *commands, unsigned int cmds_num,
-                    void (*help)(int argc, char **argv), int argc, char **argv);
+		void (*help)(int argc, char **argv), int argc, char **argv);
 extern struct btt_message *btt_send_command(struct btt_message *msg);
 extern struct btt_message *btt_send_ext_command(struct ext_btt_message *ext_cmd,
-                                                char *data, int data_len);
+		char *data, int data_len);
 
 struct list_element
 {
