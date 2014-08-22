@@ -30,18 +30,39 @@ extern int socket_remote;
 void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		const int socket_remote)
 {
+	struct btt_gatt_client_cb_bt_status bt_stat;
+	bt_status_t status = BT_STATUS_SUCCESS;
+
+	bt_stat.hdr.type = BTT_GATT_CLIENT_CB_BT_STATUS;
+	bt_stat.hdr.length = sizeof(struct btt_gatt_client_cb_bt_status)
+					- sizeof(struct btt_gatt_client_cb_hdr);
+	bt_stat.status = BT_STATUS_SUCCESS;
+
 	switch (btt_msg->command) {
 	case BTT_CMD_GATT_CLIENT_SCAN:
 	{
 		struct btt_gatt_client_scan msg;
 
-		if(!RECV(&msg, socket_remote))
+		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
 
-		gatt_client_if->scan(msg.client_if, msg.start);
+		status = gatt_client_if->scan(msg.client_if, msg.start);
 		break;
 	}
-	default: break;
+	default:
+		status = BT_STATUS_UNHANDLED;
+		break;
+	}
+
+	bt_stat.status = status;
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, (const char *) &bt_stat,
+			sizeof(struct btt_gatt_client_cb_bt_status), 0) == -1) {
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 	}
 }
 
@@ -140,7 +161,6 @@ static void register_client_cb(int status, int client_if,
 	BTT_LOG_E("NOT IMPLEMENTED");
 }
 
-/*TODO: add checking adapter status*/
 static void scan_result_cb(bt_bdaddr_t *bda, int rssi, uint8_t *adv_data)
 {
 	struct btt_gatt_client_cb_scan_result btt_cb;
