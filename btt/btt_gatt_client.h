@@ -76,6 +76,7 @@ enum btt_gatt_client_cb_t {
 	BTT_GATT_CLIENT_CB_WRITE_DESCIPTOR,
 	BTT_GATT_CLIENT_CB_READ_REMOTE_RSSI,
 	BTT_GATT_CLIENT_CB_LISTEN,
+	BTT_GATT_CLIENT_CB_BT_STATUS,
 	BTT_GATT_CLIENT_CB_END
 };
 
@@ -102,6 +103,12 @@ static const char *discoverable_mode[3] = {
 		"Undiscoverable",
 		"LE Limited",
 		"LE General"
+};
+
+struct btt_gatt_client_cb_bt_status {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	bt_status_t status;
 };
 
 extern void run_gatt_client(int argc, char **argv);

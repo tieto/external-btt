@@ -197,13 +197,10 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				sizeof(struct btt_gatt_client_scan), 0))
 			return FALSE;
 
-		if (cmd_scan->start == 1) {
-			BTT_LOG_S("GATT Client: Start scan... \n");
+		if (cmd_scan->start == 1)
 			*select_used = TRUE;
-		} else {
+		else
 			*select_used = FALSE;
-			close(server_sock);
-		}
 
 		break;
 	}
@@ -236,6 +233,20 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 	}
 
 	switch (btt_cb.type) {
+	case BTT_GATT_CLIENT_CB_BT_STATUS:
+	{
+		struct btt_gatt_client_cb_bt_status stat;
+
+		if (!RECV(&stat, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		BTT_LOG_S("GATT Client request status: %s\n",
+				bt_status_string[stat.status]);
+		*wait_for_msg = ((stat.status != BT_STATUS_SUCCESS) ? FALSE : TRUE);
+		return TRUE;
+	}
 	case BTT_GATT_CLIENT_CB_SCAN_RESULT:
 	{
 		struct btt_gatt_client_cb_scan_result device;
