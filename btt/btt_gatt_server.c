@@ -22,11 +22,12 @@
 
 static void run_gatt_server_help(int argc, char **argv);
 static void run_gatt_server_reg(int argc, char **argv);
+static void run_gatt_server_unreg(int argc, char **argv);
 
 static const struct extended_command gatt_server_commands[] = {
 		{{ "help",							"",						run_gatt_server_help}, 1, MAX_ARGC},
 		{{ "register_server",				"<16-bits UUID>",		run_gatt_server_reg}, 2, 2},
-		{{ "unregister_server",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "unregister_server",				"<server_if>",			run_gatt_server_unreg}, 2, 2},
 		{{ "connect",						"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
 		{{ "disconnect",					"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
 		{{ "add_service",					"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
@@ -96,6 +97,23 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		break;
 	}
+	case BTT_GATT_SERVER_REQ_UNREGISTER_SERVER:
+	{
+		struct btt_gatt_server_unreg *unregister_server =
+				(struct btt_gatt_server_unreg *) data;
+
+		unregister_server->hdr.command = BTT_GATT_SERVER_CMD_UNREGISTER_SERVER;
+		unregister_server->hdr.length = sizeof(struct btt_gatt_server_unreg)
+				- sizeof(struct btt_message);
+
+		if (send(server_sock, unregister_server,
+				sizeof(struct btt_gatt_server_unreg), 0) == -1) {
+			close(server_sock);
+			return;
+		}
+
+		break;
+	}
 	default:
 		break;
 	}
@@ -114,6 +132,20 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
          * messages are printed (i.e. type == BTT_REQ_AGENT)
          */
 		switch (btt_cb.type) {
+		case BTT_GATT_SERVER_CB_END:
+		{
+			struct btt_gatt_server_cb_status cb;
+
+			memset(&cb, 0, sizeof(cb));
+
+			if (!RECV(&cb,server_sock)) {
+				BTT_LOG_S("Error: incorrect size of received structure.\n");
+				return;
+			}
+
+			BTT_LOG_S("\nStatus: %s\n\n",!cb.status ? "OK" : "ERROR");
+			return;
+		}
 		case BTT_GATT_SERVER_CB_REGISTER_SERVER:
 		{
 			struct btt_gatt_server_cb_reg_result cb;
@@ -159,6 +191,14 @@ static void run_gatt_server_reg(int argc, char **argv)
 	process_request(BTT_GATT_SERVER_REQ_REGISTER_SERVER, &req);
 }
 
+static void run_gatt_server_unreg(int argc, char **argv)
+{
+	struct btt_gatt_server_unreg req;
+
+	sscanf(argv[1], "%d", &req.server_if);
+
+	process_request(BTT_GATT_SERVER_REQ_UNREGISTER_SERVER, &req);
+}
 void run_gatt_server(int argc, char **argv)
 {
 	run_generic_extended(gatt_server_commands, GATT_SERVER_SUPPORTED_COMMANDS,

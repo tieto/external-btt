@@ -41,6 +41,28 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 		gatt_server_if->register_server(&msg.UUID);
 		break;
 	}
+	case BTT_GATT_SERVER_CMD_UNREGISTER_SERVER:
+	{
+		struct btt_gatt_server_unreg msg;
+		struct btt_gatt_server_cb_status  btt_cb;
+
+		btt_cb.status = -1;
+
+		if (!RECV(&msg,socket_remote)) {
+			BTT_LOG_E("Received invalid btt_gatt_server_unreg\n");
+			close(socket_remote);
+			return;
+		}
+
+		btt_cb.status = gatt_server_if->unregister_server(msg.server_if);
+		btt_cb.hdr.type = BTT_GATT_SERVER_CB_END;
+
+		if (send(socket_remote, &btt_cb,
+				sizeof(struct btt_gatt_server_cb_status), 0) == -1)
+			BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
+
+		break;
+	}
 	default: break;
 	}
 }
