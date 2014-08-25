@@ -24,13 +24,14 @@ static void run_gatt_server_help(int argc, char **argv);
 static void run_gatt_server_reg(int argc, char **argv);
 static void run_gatt_server_unreg(int argc, char **argv);
 static void run_gatt_server_connect(int arg, char **argv);
+static void run_gatt_server_disconnect(int arg, char **argv);
 
 static const struct extended_command gatt_server_commands[] = {
 		{{ "help",						"",									run_gatt_server_help}, 1, MAX_ARGC},
 		{{ "register_server",			"<16-bits UUID>",					run_gatt_server_reg}, 2, 2},
 		{{ "unregister_server",			"<server_if>",						run_gatt_server_unreg}, 2, 2},
 		{{ "connect",					"<server_if><BD_ADDR><is_direct>",	run_gatt_server_connect}, 4, 4},
-		{{ "disconnect",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "disconnect",				"<server_if><BD_ADDR><conn_id>",	run_gatt_server_disconnect}, 4, 4},
 		{{ "add_service",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
 		{{ "add_included_service",		"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
 		{{ "add_charakteristic",		"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
@@ -132,6 +133,23 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		break;
 	}
+	case BTT_GATT_SERVER_REQ_DISCONNECT:
+	{
+		struct btt_gatt_server_disconnect *disconnect =
+				(struct btt_gatt_server_disconnect*) data;
+
+		disconnect->hdr.command = BTT_GATT_SERVER_CMD_DISCONNECT;
+		disconnect->hdr.length = sizeof(struct btt_gatt_server_disconnect)
+				- sizeof(struct btt_message);
+
+		if (send(server_sock, disconnect,
+				sizeof(struct btt_gatt_server_disconnect), 0) == -1) {
+			close(server_sock);
+			return;
+		}
+
+		break;
+	}
 	default:
 		break;
 	}
@@ -195,7 +213,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 				return;
 			}
 
-			if (type == BTT_GATT_SERVER_REQ_CONNECT) {
+			if (type == BTT_GATT_SERVER_REQ_CONNECT || BTT_GATT_SERVER_REQ_DISCONNECT) {
 				BTT_LOG_S("Address: ");
 				print_bdaddr(cb.bda.address);
 				BTT_LOG_S("\nConnection ID: %d\n", cb.conn_id);
@@ -253,6 +271,22 @@ static void run_gatt_server_connect(int argc, char **argv)
 	sscanf(argv[3], "%d", &req.is_direct);
 
 	process_request(BTT_GATT_SERVER_REQ_CONNECT, &req);
+}
+
+static void run_gatt_server_disconnect(int argc, char **argv)
+{
+	struct btt_gatt_server_disconnect req;
+
+	sscanf(argv[1], "%d", &req.server_if);
+
+	if (!sscanf_bdaddr(argv[2], req.bd_addr.address)) {
+		BTT_LOG_S("Error: Incorrect address\n");
+		return;
+	}
+
+	sscanf(argv[3], "%d", &req.conn_id);
+
+	process_request(BTT_GATT_SERVER_REQ_DISCONNECT, &req);
 }
 void run_gatt_server(int argc, char **argv)
 {

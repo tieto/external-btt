@@ -26,6 +26,7 @@ enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_REGISTER_SERVER = 3000,
 	BTT_GATT_SERVER_REQ_UNREGISTER_SERVER,
 	BTT_GATT_SERVER_REQ_CONNECT,
+	BTT_GATT_SERVER_REQ_DISCONNECT,
 	BTT_GATT_SERVER_REQ_END
 };
 
@@ -53,6 +54,14 @@ struct btt_gatt_server_connect {
 	int server_if;
 	bt_bdaddr_t bd_addr;
 	int is_direct;
+};
+
+struct btt_gatt_server_disconnect {
+	struct btt_message hdr;
+
+	int server_if;
+	bt_bdaddr_t bd_addr;
+	int conn_id;
 };
 
 /* Structures for callbacks */
