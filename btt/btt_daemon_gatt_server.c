@@ -76,6 +76,19 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 		gatt_server_if->connect(msg.server_if, &msg.bd_addr, msg.is_direct);
 		break;
 	}
+	case BTT_GATT_SERVER_CMD_DISCONNECT:
+	{
+		struct btt_gatt_server_disconnect msg;
+
+		if (!RECV(&msg,socket_remote)) {
+			BTT_LOG_E("Received invalid btt_gatt_server_disconnect\n");
+			close(socket_remote);
+			return;
+		}
+
+		gatt_server_if->disconnect(msg.server_if, &msg.bd_addr, msg.conn_id);
+		break;
+	}
 	default: break;
 	}
 }
