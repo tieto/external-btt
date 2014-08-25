@@ -19,6 +19,7 @@
 #include "btt_utils.h"
 
 #define DEFAULT_TIME_SEC 3
+#define MAX_ARGC 20
 
 static void run_gatt_client_help(int argc, char **argv);
 static void run_gatt_client_scan(int argc, char **argv);
@@ -33,33 +34,34 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		bool *wait_for_msg, int server_sock);
 static bool process_stdin(bool *select_used);
 
-static const struct command gatt_client_commands[] = {
-		{ "help",							"",							run_gatt_client_help},
-		{ "scan",							"<client_if>",				run_gatt_client_scan},
-		{ "connect",						"NOT IMPLEMENTED YET",	NULL					},
-		{ "disconnect",						"NOT IMPLEMENTED YET",	NULL					},
-		{ "listen",							"NOT IMPLEMENTED YET",	NULL					},
-		{ "refresh",						"NOT IMPLEMENTED YET",	NULL					},
-		{ "search_service",					"NOT IMPLEMENTED YET",	NULL					},
-		{ "get_included_service",			"NOT IMPLEMENTED YET",	NULL					},
-		{ "get_charakteristic",				"NOT IMPLEMENTED YET",	NULL					},
-		{ "get_descriptor",					"NOT IMPLEMENTED YET",	NULL					},
-		{ "read_descriptor",				"NOT IMPLEMENTED YET",	NULL					},
-		{ "write_descriptor",				"NOT IMPLEMENTED YET",	NULL					},
-		{ "execute_write",					"NOT IMPLEMENTED YET",	NULL					},
-		{ "register_for_notification",		"NOT IMPLEMENTED YET",	NULL					},
-		{ "deregister_for_notification",	"NOT IMPLEMENTED YET",	NULL					},
-		{ "read_remote_rssi",				"NOT IMPLEMENTED YET",	NULL					},
-		{ "get_device_type",				"NOT IMPLEMENTED YET",	NULL					},
-		{ "set_adv_data",					"NOT IMPLEMENTED YET",	NULL					},
-		{ "test_command",					"NOT IMPLEMENTED YET",	NULL					},
+static const struct extended_command gatt_client_commands[] = {
+		{{ "help",							"",							run_gatt_client_help}, 1, MAX_ARGC},
+		{{ "scan",							"<client_if>",				run_gatt_client_scan}, 2, 2},
+		{{ "connect",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "disconnect",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "listen",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "refresh",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "search_service",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "get_included_service",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "get_charakteristic",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "get_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "read_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "write_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "execute_write",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "register_for_notification",		"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "deregister_for_notification",	"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "read_remote_rssi",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "get_device_type",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "set_adv_data",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "test_command",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 };
 
-#define GATT_CLIENT_SUPPORTED_COMMANDS sizeof(gatt_client_commands)/sizeof(struct command)
+#define GATT_CLIENT_SUPPORTED_COMMANDS sizeof(gatt_client_commands)/sizeof(struct extended_command)
 
 void run_gatt_client_help(int argc, char **argv)
 {
-	print_commands(gatt_client_commands, GATT_CLIENT_SUPPORTED_COMMANDS);
+	print_commands_extended(gatt_client_commands,
+			GATT_CLIENT_SUPPORTED_COMMANDS);
 	exit(EXIT_SUCCESS);
 }
 
@@ -119,21 +121,13 @@ static void process_request(enum btt_gatt_client_req_t type, void *data)
 
 void run_gatt_client(int argc, char **argv)
 {
-	run_generic(gatt_client_commands, GATT_CLIENT_SUPPORTED_COMMANDS,
+	run_generic_extended(gatt_client_commands, GATT_CLIENT_SUPPORTED_COMMANDS,
 			run_gatt_client_help, argc, argv);
 }
 
 static void run_gatt_client_scan(int argc, char **argv)
 {
 	struct btt_gatt_client_scan req;
-
-	if (argc > 2) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	} else if (argc < 2) {
-		BTT_LOG_S("Error: Too few arguments\n");
-		return;
-	}
 
 	sscanf(argv[1], "%d", &req.client_if);
 	req.start = 1;
