@@ -41,3 +41,8 @@ extern bool list_contains(struct list_element *list, void *data,
 extern struct list_element *list_append(struct list_element *list,void *data);
 struct list_element *list_clear(struct list_element *list,
 		void (*data_destroy)(void *));
+
+/* return FALSE if length of received structure is different
+ * from expected length */
+#define RECV(ptr, sock) (((recv((sock), (ptr), \
+		sizeof(*(ptr)), 0)) != (sizeof(*(ptr)))) ? FALSE : TRUE)
