@@ -20,16 +20,38 @@
 
 #define BTT_GATT_SERVER_H
 
+#include "btt.h"
+
 enum btt_gatt_server_req_t {
-	/* TODO: add request types */
-	/* TODO: add start number */
+	BTT_GATT_SERVER_REQ_REGISTER_SERVER = 3000,
 	BTT_GATT_SERVER_REQ_END
 };
 
 enum btt_gatt_server_cb_t {
-	/* TODO: add callbacks types */
-	/* TODO: add start number */
+	BTT_GATT_SERVER_CB_REGISTER_SERVER = 2000,
 	BTT_GATT_SERVER_CB_END
+};
+
+struct btt_gatt_server_reg {
+	struct btt_message hdr;
+
+	bt_uuid_t UUID;
+};
+
+/* Structures for callbacks */
+
+struct btt_gatt_server_cb_hdr {
+	enum btt_gatt_server_cb_t type;
+
+	uint16_t length;
+};
+
+struct btt_gatt_server_cb_reg_result {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int status;
+	int server_if;
+	bt_uuid_t app_uuid;
 };
 
 extern void run_gatt_server(int argc, char **argv);
