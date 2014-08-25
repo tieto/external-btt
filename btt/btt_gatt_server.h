@@ -24,6 +24,7 @@
 
 enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_REGISTER_SERVER = 3000,
+	BTT_GATT_SERVER_REQ_UNREGISTER_SERVER,
 	BTT_GATT_SERVER_REQ_END
 };
 
@@ -36,6 +37,12 @@ struct btt_gatt_server_reg {
 	struct btt_message hdr;
 
 	bt_uuid_t UUID;
+};
+
+struct btt_gatt_server_unreg {
+	struct btt_message hdr;
+
+	int server_if;
 };
 
 /* Structures for callbacks */
@@ -52,6 +59,12 @@ struct btt_gatt_server_cb_reg_result {
 	int status;
 	int server_if;
 	bt_uuid_t app_uuid;
+};
+
+struct btt_gatt_server_cb_status {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int status;
 };
 
 extern void run_gatt_server(int argc, char **argv);
