@@ -62,6 +62,12 @@ struct btt_gatt_client_register_client {
 	bt_uuid_t UUID;
 };
 
+struct btt_gatt_client_unregister_client {
+	struct btt_message hdr;
+
+	int client_if;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,

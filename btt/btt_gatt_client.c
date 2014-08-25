@@ -24,6 +24,7 @@
 static void run_gatt_client_help(int argc, char **argv);
 static void run_gatt_client_scan(int argc, char **argv);
 static void run_gatt_client_register_client(int argc, char **argv);
+static void run_gatt_client_un_register_client(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -39,6 +40,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "help",							"",							run_gatt_client_help}, 1, MAX_ARGC},
 		{{ "scan",							"<client_if>",				run_gatt_client_scan}, 2, 2},
 		{{ "register_client",				"<16-bits UUID>", run_gatt_client_register_client}, 2, 2},
+		{{ "unregister_client",				"<client_if>", run_gatt_client_un_register_client}, 2, 2},
 		{{ "connect",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "disconnect",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "listen",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -221,6 +223,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT:
+	{
+		struct btt_gatt_client_unregister_client *unregister_client;
+
+		unregister_client = (struct btt_gatt_client_unregister_client *) data;
+		unregister_client->hdr.command = BTT_CMD_GATT_CLIENT_UNREGISTER_CLIENT;
+		unregister_client->hdr.length = sizeof(struct btt_gatt_client_unregister_client)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, unregister_client,
+				sizeof(struct btt_gatt_client_unregister_client), 0) == -1)
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -261,7 +278,8 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 
 		BTT_LOG_S("GATT Client request status: %s\n",
 				bt_status_string[stat.status]);
-		*wait_for_msg = ((stat.status != BT_STATUS_SUCCESS) ? FALSE : TRUE);
+		*wait_for_msg = (((stat.status != BT_STATUS_SUCCESS) || (type
+				!= BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT)) ? FALSE : TRUE);
 		return TRUE;
 	}
 	case BTT_GATT_CLIENT_CB_SCAN_RESULT:
@@ -385,4 +403,12 @@ static void run_gatt_client_register_client(int argc, char **argv)
 	UUID = NULL;
 
 	process_request(BTT_GATT_CLIENT_REQ_REGISTER_CLIENT, &req);
+}
+
+static void run_gatt_client_un_register_client(int argc, char **argv)
+{
+	struct btt_gatt_client_unregister_client req;
+
+	sscanf(argv[1], "%d", &req.client_if);
+	process_request(BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT, &req);
 }

@@ -66,6 +66,19 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		status = gatt_client_if->scan(msg.client_if, msg.start);
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_UNREGISTER_CLIENT:
+	{
+		struct btt_gatt_client_unregister_client msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		status = gatt_client_if->unregister_client((msg.client_if));
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
