@@ -23,22 +23,23 @@
 static void run_gatt_server_help(int argc, char **argv);
 static void run_gatt_server_reg(int argc, char **argv);
 static void run_gatt_server_unreg(int argc, char **argv);
+static void run_gatt_server_connect(int arg, char **argv);
 
 static const struct extended_command gatt_server_commands[] = {
-		{{ "help",							"",						run_gatt_server_help}, 1, MAX_ARGC},
-		{{ "register_server",				"<16-bits UUID>",		run_gatt_server_reg}, 2, 2},
-		{{ "unregister_server",				"<server_if>",			run_gatt_server_unreg}, 2, 2},
-		{{ "connect",						"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "disconnect",					"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "add_service",					"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "add_included_service",			"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "add_charakteristic",			"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "add_descriptor",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "start_service",					"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "stop_service",					"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "delete_service",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "send_indication",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "send_response",					"NOT IMPLEMENTED YET",	NULL				}, 1, 1}
+		{{ "help",						"",									run_gatt_server_help}, 1, MAX_ARGC},
+		{{ "register_server",			"<16-bits UUID>",					run_gatt_server_reg}, 2, 2},
+		{{ "unregister_server",			"<server_if>",						run_gatt_server_unreg}, 2, 2},
+		{{ "connect",					"<server_if><BD_ADDR><is_direct>",	run_gatt_server_connect}, 4, 4},
+		{{ "disconnect",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "add_service",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "add_included_service",		"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "add_charakteristic",		"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "add_descriptor",			"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "start_service",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "stop_service",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "delete_service",			"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "send_indication",			"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "send_response",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1}
 };
 
 #define GATT_SERVER_SUPPORTED_COMMANDS sizeof(gatt_server_commands)/sizeof(struct extended_command)
@@ -114,6 +115,23 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		break;
 	}
+	case BTT_GATT_SERVER_REQ_CONNECT:
+	{
+		struct btt_gatt_server_connect *connect =
+				(struct btt_gatt_server_connect*) data;
+
+		connect->hdr.command = BTT_GATT_SERVER_CMD_CONNECT;
+		connect->hdr.length = sizeof(struct btt_gatt_server_connect)
+				- sizeof(struct btt_message);
+
+		if (send(server_sock, connect,
+				sizeof(struct btt_gatt_server_connect), 0) == -1) {
+			close(server_sock);
+			return;
+		}
+
+		break;
+	}
 	default:
 		break;
 	}
@@ -166,6 +184,27 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			return;
 		}
+		case BTT_GATT_SERVER_CB_CONNECT:
+		{
+			struct btt_gatt_server_cb_connect cb;
+
+			memset(&cb, 0, sizeof(cb));
+
+			if (!RECV(&cb,server_sock)) {
+				BTT_LOG_S("Error: incorrect size of received structure.\n");
+				return;
+			}
+
+			if (type == BTT_GATT_SERVER_REQ_CONNECT) {
+				BTT_LOG_S("Address: ");
+				print_bdaddr(cb.bda.address);
+				BTT_LOG_S("\nConnection ID: %d\n", cb.conn_id);
+				BTT_LOG_S("%s\n", (cb.connected) ? "CONNECT" : "DISCONNECT");
+				BTT_LOG_S("Server interface: %d\n\n", cb.server_if);
+			}
+
+			return;
+		}
 		default:
 			buffer = malloc(btt_cb.length);
 
@@ -198,6 +237,22 @@ static void run_gatt_server_unreg(int argc, char **argv)
 	sscanf(argv[1], "%d", &req.server_if);
 
 	process_request(BTT_GATT_SERVER_REQ_UNREGISTER_SERVER, &req);
+}
+
+static void run_gatt_server_connect(int argc, char **argv)
+{
+	struct btt_gatt_server_connect req;
+
+	sscanf(argv[1], "%d", &req.server_if);
+
+	if (!sscanf_bdaddr(argv[2], req.bd_addr.address)) {
+			BTT_LOG_S("Error: Incorrect address\n");
+			return;
+	}
+
+	sscanf(argv[3], "%d", &req.is_direct);
+
+	process_request(BTT_GATT_SERVER_REQ_CONNECT, &req);
 }
 void run_gatt_server(int argc, char **argv)
 {

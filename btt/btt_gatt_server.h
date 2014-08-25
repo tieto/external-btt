@@ -25,11 +25,13 @@
 enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_REGISTER_SERVER = 3000,
 	BTT_GATT_SERVER_REQ_UNREGISTER_SERVER,
+	BTT_GATT_SERVER_REQ_CONNECT,
 	BTT_GATT_SERVER_REQ_END
 };
 
 enum btt_gatt_server_cb_t {
 	BTT_GATT_SERVER_CB_REGISTER_SERVER = 2000,
+	BTT_GATT_SERVER_CB_CONNECT,
 	BTT_GATT_SERVER_CB_END
 };
 
@@ -43,6 +45,14 @@ struct btt_gatt_server_unreg {
 	struct btt_message hdr;
 
 	int server_if;
+};
+
+struct btt_gatt_server_connect {
+	struct btt_message hdr;
+
+	int server_if;
+	bt_bdaddr_t bd_addr;
+	int is_direct;
 };
 
 /* Structures for callbacks */
@@ -59,6 +69,15 @@ struct btt_gatt_server_cb_reg_result {
 	int status;
 	int server_if;
 	bt_uuid_t app_uuid;
+};
+
+struct btt_gatt_server_cb_connect {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int conn_id;
+	int server_if;
+	int connected;
+	bt_bdaddr_t bda;
 };
 
 struct btt_gatt_server_cb_status {
