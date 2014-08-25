@@ -104,6 +104,12 @@ struct command {
 	void (*run)(int argc, char **argv);
 };
 
+struct extended_command {
+	struct command comm;
+	uint8_t argc_min;
+	uint8_t argc_max;
+};
+
 struct btt_message {
 	unsigned int command;
 	unsigned int length;
