@@ -27,6 +27,7 @@ extern const btgatt_interface_t *gatt_if;
 extern struct list_element *list;
 extern int socket_remote;
 
+/*TODO: add checking condition, like adapter status*/
 void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		const int socket_remote)
 {
@@ -39,6 +40,19 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 	bt_stat.status = BT_STATUS_SUCCESS;
 
 	switch (btt_msg->command) {
+	case BTT_CMD_GATT_CLIENT_REGISTER_CLIENT:
+	{
+		struct btt_gatt_client_register_client msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		gatt_client_if->register_client(&msg.UUID);
+		break;
+	}
 	case BTT_CMD_GATT_CLIENT_SCAN:
 	{
 		struct btt_gatt_client_scan msg;
@@ -157,8 +171,20 @@ static bool add_address(uint8_t *bda)
 static void register_client_cb(int status, int client_if,
 		bt_uuid_t *app_uuid)
 {
+	struct btt_gatt_client_cb_register_client btt_cb;
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_REGISTER_CLIENT;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_register_client)
+					- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.status = status;
+	btt_cb.client_if = client_if;
+	memcpy(&btt_cb.app_uuid, app_uuid, sizeof(*app_uuid));
+
 	BTT_LOG_D("Callback_GC Client Register");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	if (send(socket_remote, (const char *) &btt_cb,
+			sizeof(struct btt_gatt_client_cb_register_client), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static void scan_result_cb(bt_bdaddr_t *bda, int rssi, uint8_t *adv_data)

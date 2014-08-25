@@ -23,6 +23,7 @@
 
 static void run_gatt_client_help(int argc, char **argv);
 static void run_gatt_client_scan(int argc, char **argv);
+static void run_gatt_client_register_client(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -37,6 +38,7 @@ static bool process_stdin(bool *select_used);
 static const struct extended_command gatt_client_commands[] = {
 		{{ "help",							"",							run_gatt_client_help}, 1, MAX_ARGC},
 		{{ "scan",							"<client_if>",				run_gatt_client_scan}, 2, 2},
+		{{ "register_client",				"<16-bits UUID>", run_gatt_client_register_client}, 2, 2},
 		{{ "connect",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "disconnect",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "listen",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -204,6 +206,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_REGISTER_CLIENT:
+	{
+		struct btt_gatt_client_register_client *register_client;
+
+		register_client = (struct btt_gatt_client_register_client *) data;
+		register_client->hdr.command = BTT_CMD_GATT_CLIENT_REGISTER_CLIENT;
+		register_client->hdr.length = sizeof(struct btt_gatt_client_register_client)
+						- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, register_client,
+				sizeof(struct btt_gatt_client_register_client), 0) == -1)
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -217,7 +234,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		bool *wait_for_msg, int server_sock)
 {
-	unsigned int len;
+	unsigned int len, i;
 	struct btt_gatt_client_cb_hdr btt_cb;
 	uint8_t empty_BD_ADDR[BD_ADDR_LEN];
 
@@ -267,6 +284,33 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		*wait_for_msg = TRUE;
 		return TRUE;
 	}
+	case BTT_GATT_CLIENT_CB_REGISTER_CLIENT:
+	{
+		struct btt_gatt_client_cb_register_client cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_REGISTER_CLIENT) {
+			BTT_LOG_S("UUID: ");
+
+			for (i = 0; i < sizeof(cb.app_uuid); i++) {
+				BTT_LOG_S("%.2X", cb.app_uuid.uu[i]);
+
+				/* formating UUID */
+				if (i == 3 || i == 5 || i==7 || i == 9)
+					BTT_LOG_S("-");
+			}
+
+			BTT_LOG_S("\nStatus: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
 	default:
 		*wait_for_msg = FALSE;
 		break;
@@ -300,4 +344,45 @@ static bool process_stdin(bool *select_used)
 	}
 
 	return FALSE;
+}
+
+/* returned memory block must be free */
+static bt_uuid_t *create_uuid(uint8_t *bit_16)
+{
+	uint8_t base[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
+			0x00, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB};
+	bt_uuid_t *pUUID = calloc(1, sizeof(bt_uuid_t));
+
+	base[2] = bit_16[1];
+	base[3] = bit_16[0];
+	memcpy(pUUID->uu, base, sizeof(base));
+
+	return pUUID;
+}
+
+/* 4 hex-number as argument, like FFFF */
+static void run_gatt_client_register_client(int argc, char **argv)
+{
+	char input[256];
+	unsigned long tmp;
+	uint8_t tab[2];
+	bt_uuid_t *UUID;
+	struct btt_gatt_client_register_client req;
+
+	sscanf(argv[1], "%s", input);
+	if (strlen(input) != 4) {
+		BTT_LOG_S("Error: Incorrect UUID\n");
+		return;
+	}
+
+	tmp = strtoul(input, NULL, 16);
+	tab[0] = (0x00FF & tmp);
+	tab[1] = ((0xFF00 & tmp) >> 8);
+
+	UUID = create_uuid(tab);
+	memcpy(&req.UUID, UUID, sizeof(bt_uuid_t));
+	free(UUID);
+	UUID = NULL;
+
+	process_request(BTT_GATT_CLIENT_REQ_REGISTER_CLIENT, &req);
 }

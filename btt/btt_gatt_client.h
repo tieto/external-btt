@@ -56,6 +56,12 @@ struct btt_gatt_client_scan {
 	unsigned int start;
 };
 
+struct btt_gatt_client_register_client {
+	struct btt_message hdr;
+
+	bt_uuid_t UUID;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
@@ -103,6 +109,14 @@ static const char *discoverable_mode[3] = {
 		"Undiscoverable",
 		"LE Limited",
 		"LE General"
+};
+
+struct btt_gatt_client_cb_register_client {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int status;
+	int client_if;
+	bt_uuid_t app_uuid;
 };
 
 struct btt_gatt_client_cb_bt_status {
