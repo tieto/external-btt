@@ -52,6 +52,41 @@ void print_commands(const struct command *commands, unsigned int cmds_num)
 	BTT_LOG_S("\n");
 }
 
+void print_commands_extended(const struct extended_command *commands,
+		unsigned int cmds_num)
+{
+	unsigned int i;
+	unsigned int max_len;
+	char *while_separator;
+
+	BTT_LOG_S("Commands:\n");
+
+	max_len = 0;
+
+	for (i = 0; i < cmds_num; i += 1) {
+		max_len = (max_len < strlen(commands[i].comm.command)) ?
+				strlen(commands[i].comm.command) : max_len;
+	}
+
+	max_len += 11;
+	while_separator = (char *)malloc(max_len);
+
+	for (i = 0; i < cmds_num; i += 1) {
+		memset(while_separator, ' ',
+				max_len - strlen(commands[i].comm.command));
+		while_separator[max_len - strlen(commands[i].comm.command) - 1] = '\0';
+#ifndef DEVELOPMENT_VERSION
+		if (commands[i].comm.run)
+#endif
+			BTT_LOG_S("\t%s%s%s\n", commands[i].comm.command, while_separator,
+					commands[i].comm.description);
+	}
+
+	free(while_separator);
+
+	BTT_LOG_S("\n");
+}
+
 void run_generic(const struct command *commands, unsigned int cmds_num,
 		void (*help)(int argc, char **argv), int argc, char **argv)
 {
@@ -72,6 +107,45 @@ void run_generic(const struct command *commands, unsigned int cmds_num,
 			break;
 		}
 	}
+	if (i >= cmds_num) {
+		BTT_LOG_S("Unknown \"%s\" command: <%s>\n", argv[0], argv[1]);
+		exit(EXIT_FAILURE);
+	}
+}
+
+void run_generic_extended(const struct extended_command *commands,
+		unsigned int cmds_num, void (*help)(int argc, char **argv),
+		int argc, char **argv)
+{
+	unsigned int i;
+
+	if (argc <= 1)
+		help(0, NULL);
+
+	if (strcmp(argv[1], "help") != 0)
+		btt_daemon_check();
+
+	for (i = 0; i < cmds_num; i += 1) {
+
+		if (strcmp(argv[1], commands[i].comm.command) == 0) {
+			if (!commands[i].comm.run) {
+				BTT_LOG_S("Not implemented yet\n");
+			} else {
+
+				if (argc - 1 > commands[i].argc_max) {
+					BTT_LOG_S("Error: Too many arguments\n");
+					exit(EXIT_FAILURE);
+				} else if (argc - 1 < commands[i].argc_min) {
+					BTT_LOG_S("Error: Too few arguments\n");
+					exit(EXIT_FAILURE);
+				}
+				commands[i].comm.run(argc - 1, argv + 1);
+			}
+
+			break;
+		}
+	}
+
 	if (i >= cmds_num) {
 		BTT_LOG_S("Unknown \"%s\" command: <%s>\n", argv[0], argv[1]);
 		exit(EXIT_FAILURE);
