@@ -246,10 +246,7 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 	{
 		struct btt_gatt_client_cb_scan_result device;
 
-		memset(&device, 0, sizeof(device));
-		len = recv(server_sock, &device, sizeof(device), 0);
-
-		if (len != sizeof(device)) {
+		if (!RECV(&device, server_sock)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return FALSE;
 		}
