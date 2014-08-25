@@ -63,6 +63,19 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		break;
 	}
+	case BTT_GATT_SERVER_CMD_CONNECT:
+	{
+		struct btt_gatt_server_connect msg;
+
+		if (!RECV(&msg,socket_remote)) {
+			BTT_LOG_E("Received invalid btt_gatt_server_connect\n");
+			close(socket_remote);
+			return;
+		}
+
+		gatt_server_if->connect(msg.server_if, &msg.bd_addr, msg.is_direct);
+		break;
+	}
 	default: break;
 	}
 }
@@ -89,9 +102,26 @@ static void register_server_cb(int status, int server_if, bt_uuid_t *app_uuid)
 		 BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
+static void connect_cb(int conn_id, int server_if, int connected, bt_bdaddr_t *bda)
+{
+	struct btt_gatt_server_cb_connect btt_cb;
+
+	BTT_LOG_D("Callback_GS Connect");
+	btt_cb.hdr.type = BTT_GATT_SERVER_CB_CONNECT;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_connect)
+			- sizeof(struct btt_gatt_server_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.server_if = server_if;
+	memcpy(&btt_cb.bda, bda, sizeof(bt_bdaddr_t));
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_server_cb_connect), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
+}
+
 static btgatt_server_callbacks_t sGattServerCallbacks = {
 		register_server_cb,
-		NULL,
+		connect_cb,
 		NULL,
 		NULL,
 		NULL,
