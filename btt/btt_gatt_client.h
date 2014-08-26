@@ -76,12 +76,20 @@ struct btt_gatt_client_connect {
 	int is_direct;
 };
 
+struct btt_gatt_client_disconnect {
+	struct btt_message hdr;
+
+	int client_if;
+	bt_bdaddr_t addr;
+	int conn_id;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
 	BTT_GATT_CLIENT_CB_SCAN_RESULT,
 	BTT_GATT_CLIENT_CB_CONNECT,
-	BTT_GATT_CLIENT_CB_DISCONECT,
+	BTT_GATT_CLIENT_CB_DISCONNECT,
 	BTT_GATT_CLIENT_CB_SEARCH_COMPLETE,
 	BTT_GATT_CLIENT_CB_SEARCH_RESULT,
 	BTT_GATT_CLIENT_CB_GET_CHARAKTERISTIC,
@@ -140,6 +148,15 @@ struct btt_gatt_client_cb_bt_status {
 };
 
 struct btt_gatt_client_cb_connect {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int conn_id;
+	int status;
+	int client_if;
+	bt_bdaddr_t bda;
+};
+
+struct btt_gatt_client_cb_disconnect {
 	struct btt_gatt_client_cb_hdr hdr;
 
 	int conn_id;
