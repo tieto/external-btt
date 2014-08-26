@@ -91,6 +91,13 @@ struct btt_gatt_client_read_remote_rssi {
 	bt_bdaddr_t addr;
 };
 
+struct btt_gatt_client_listen {
+	struct btt_message hdr;
+
+	int client_if;
+	int start;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
@@ -178,6 +185,13 @@ struct btt_gatt_client_cb_read_remote_rssi {
 	int client_if;
 	bt_bdaddr_t addr;
 	int rssi;
+	int status;
+};
+
+struct btt_gatt_client_cb_listen {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int server_if;
 	int status;
 };
 

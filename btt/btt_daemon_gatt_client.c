@@ -120,6 +120,19 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		status = gatt_client_if->read_remote_rssi(msg.client_if, &msg.addr);
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_LISTEN:
+	{
+		struct btt_gatt_client_listen msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		status = gatt_client_if->listen(msg.client_if, msg.start);
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
@@ -424,8 +437,20 @@ static void read_remote_rssi_cb(int client_if, bt_bdaddr_t* bda,
 
 static void listen_cb(int status, int server_if)
 {
+	struct btt_gatt_client_cb_listen btt_cb;
+
 	BTT_LOG_D("Callback_GC Listen");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_LISTEN;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_listen)
+			- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.status = status;
+	btt_cb.server_if = server_if;
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, (const char *) &btt_cb,
+			sizeof(struct btt_gatt_client_cb_listen), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static btgatt_client_callbacks_t sGattClientCallbacks = {

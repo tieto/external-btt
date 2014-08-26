@@ -28,6 +28,7 @@ static void run_gatt_client_un_register_client(int argc, char **argv);
 static void run_gatt_client_connect(int argc, char **argv);
 static void run_gatt_client_disconnect(int argc, char **argv);
 static void run_gatt_client_read_remote_rssi(int argc, char **argv);
+static void run_gatt_client_listen(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -46,7 +47,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "unregister_client",				"<client_if>", run_gatt_client_un_register_client}, 2, 2},
 		{{ "connect",						"<client_if> <BD_ADDR> <is_direct>", run_gatt_client_connect}, 4, 4},
 		{{ "disconnect",					"<client_if> <BD_ADDR> <conn_id>", run_gatt_client_disconnect}, 4, 4},
-		{{ "listen",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "listen",						"<client_if> <start>", run_gatt_client_listen}, 3, 3},
 		{{ "refresh",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "search_service",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "get_included_service",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -286,6 +287,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_LISTEN:
+	{
+		struct btt_gatt_client_listen *listen;
+
+		listen = (struct btt_gatt_client_listen *) data;
+		listen->hdr.command = BTT_CMD_GATT_CLIENT_LISTEN;
+		listen->hdr.length = sizeof(struct btt_gatt_client_listen)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, listen,
+				sizeof(struct btt_gatt_client_listen), 0) == -1)
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -437,6 +453,23 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		*wait_for_msg = FALSE;
 		return TRUE;
 	}
+	case BTT_GATT_CLIENT_CB_LISTEN:
+	{
+		struct btt_gatt_client_cb_listen cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_LISTEN) {
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Client interface: %d\n\n", cb.server_if);
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
 	default:
 		*wait_for_msg = FALSE;
 		break;
@@ -564,4 +597,13 @@ static void run_gatt_client_read_remote_rssi(int argc, char **argv)
 
 	sscanf(argv[2], "%d", &req.client_if);
 	process_request(BTT_GATT_CLIENT_REQ_READ_REMOTE_RSSI, &req);
+}
+
+static void run_gatt_client_listen(int argc, char **argv)
+{
+	struct btt_gatt_client_listen req;
+
+	sscanf(argv[1], "%d", &req.client_if);
+	sscanf(argv[2], "%d", &req.start);
+	process_request(BTT_GATT_CLIENT_REQ_LISTEN, &req);
 }
