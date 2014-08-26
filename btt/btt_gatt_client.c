@@ -27,6 +27,7 @@ static void run_gatt_client_register_client(int argc, char **argv);
 static void run_gatt_client_un_register_client(int argc, char **argv);
 static void run_gatt_client_connect(int argc, char **argv);
 static void run_gatt_client_disconnect(int argc, char **argv);
+static void run_gatt_client_read_remote_rssi(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -56,7 +57,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "execute_write",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "register_for_notification",		"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "deregister_for_notification",	"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
-		{{ "read_remote_rssi",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "read_remote_rssi",				"<BD_ADDR> <client_if>", run_gatt_client_read_remote_rssi}, 3, 3},
 		{{ "get_device_type",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "set_adv_data",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "test_command",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -270,6 +271,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_READ_REMOTE_RSSI:
+	{
+		struct btt_gatt_client_read_remote_rssi *read_rssi;
+
+		read_rssi = (struct btt_gatt_client_read_remote_rssi *) data;
+		read_rssi->hdr.command = BTT_CMD_GATT_CLIENT_READ_REMOTE_RSSI;
+		read_rssi->hdr.length = sizeof(struct btt_gatt_client_read_remote_rssi)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, read_rssi,
+				sizeof(struct btt_gatt_client_read_remote_rssi), 0) == -1)
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -401,6 +417,26 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		*wait_for_msg = FALSE;
 		return TRUE;
 	}
+	case BTT_GATT_CLIENT_CB_READ_REMOTE_RSSI:
+	{
+		struct btt_gatt_client_cb_read_remote_rssi cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_READ_REMOTE_RSSI) {
+			BTT_LOG_S("Address: ");
+			print_bdaddr(cb.addr.address);
+			BTT_LOG_S("\nStatus: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("RSSI: %d \n", cb.rssi);
+			BTT_LOG_S("(higher RSSI level = stronger signal)\n\n");
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
 	default:
 		*wait_for_msg = FALSE;
 		break;
@@ -515,4 +551,17 @@ static void run_gatt_client_disconnect(int argc, char **argv)
 	sscanf(argv[3], "%d", &req.conn_id);
 
 	process_request(BTT_GATT_CLIENT_REQ_DISCONNECT, &req);
+}
+
+static void run_gatt_client_read_remote_rssi(int argc, char **argv)
+{
+	struct btt_gatt_client_read_remote_rssi req;
+
+	if(!sscanf_bdaddr(argv[1], req.addr.address)) {
+		BTT_LOG_S("Error: Incorrect address\n");
+		return;
+	}
+
+	sscanf(argv[2], "%d", &req.client_if);
+	process_request(BTT_GATT_CLIENT_REQ_READ_REMOTE_RSSI, &req);
 }
