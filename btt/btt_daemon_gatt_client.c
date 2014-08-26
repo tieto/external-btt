@@ -93,6 +93,20 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 				(bool) msg.is_direct);
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_DISCONNECT:
+	{
+		struct btt_gatt_client_disconnect msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		status = gatt_client_if->disconnect(msg.client_if, &msg.addr,
+				msg.conn_id);
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
@@ -276,8 +290,22 @@ static void connect_cb(int conn_id, int status, int client_if,
 static void disconnect_cb(int conn_id, int status, int client_if,
 		bt_bdaddr_t* bda)
 {
+	struct btt_gatt_client_cb_disconnect btt_cb;
+
 	BTT_LOG_D("Callback_GC Disconnect");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_DISCONNECT;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_disconnect)
+			- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.status = status;
+	btt_cb.client_if = client_if;
+	memcpy(&btt_cb.bda, bda, 6);
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, (const char *) &btt_cb,
+			sizeof(struct btt_gatt_client_cb_disconnect), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static void search_complete_cb(int conn_id, int status)
