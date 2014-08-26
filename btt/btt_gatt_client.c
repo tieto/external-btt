@@ -29,6 +29,7 @@ static void run_gatt_client_connect(int argc, char **argv);
 static void run_gatt_client_disconnect(int argc, char **argv);
 static void run_gatt_client_read_remote_rssi(int argc, char **argv);
 static void run_gatt_client_listen(int argc, char **argv);
+static void run_gatt_client_set_adv_data_basic(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -60,7 +61,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "deregister_for_notification",	"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "read_remote_rssi",				"<BD_ADDR> <client_if>", run_gatt_client_read_remote_rssi}, 3, 3},
 		{{ "get_device_type",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
-		{{ "set_adv_data",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "set_adv_data_basic",			"<client_if> <set_scan_rsp> <include_name> <include_txpower> <min_interval> <max_interval> <appearance>", run_gatt_client_set_adv_data_basic}, 8, 8},
 		{{ "test_command",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 };
 
@@ -302,6 +303,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_SET_ADV_DATA:
+	{
+		struct btt_gatt_client_set_adv_data *adv;
+
+		adv = (struct btt_gatt_client_set_adv_data *) data;
+		adv->hdr.command = BTT_CMD_GATT_CLIENT_SET_ADV_DATA;
+		adv->hdr.length = sizeof(struct btt_gatt_client_set_adv_data)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, adv,
+				sizeof(struct btt_gatt_client_set_adv_data), 0) == -1)
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -343,7 +359,8 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		BTT_LOG_S("GATT Client request status: %s\n",
 				bt_status_string[stat.status]);
 		*wait_for_msg = (((stat.status != BT_STATUS_SUCCESS) || (type
-				== BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT)) ? FALSE : TRUE);
+				== BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT) || (type
+						== BTT_GATT_CLIENT_REQ_SET_ADV_DATA)) ? FALSE : TRUE);
 		return TRUE;
 	}
 	case BTT_GATT_CLIENT_CB_SCAN_RESULT:
@@ -606,4 +623,22 @@ static void run_gatt_client_listen(int argc, char **argv)
 	sscanf(argv[1], "%d", &req.client_if);
 	sscanf(argv[2], "%d", &req.start);
 	process_request(BTT_GATT_CLIENT_REQ_LISTEN, &req);
+}
+
+static void run_gatt_client_set_adv_data_basic(int argc, char **argv)
+{
+	struct btt_gatt_client_set_adv_data req;
+
+	sscanf(argv[1], "%d", &req.server_if);
+	sscanf(argv[2], "%d", &req.set_scan_rsp);
+	sscanf(argv[3], "%d", &req.include_name);
+	sscanf(argv[4], "%d", &req.include_txpower);
+	sscanf(argv[5], "%d", &req.min_interval);
+	sscanf(argv[6], "%d", &req.max_interval);
+	sscanf(argv[7], "%d", &req.appearance);
+
+	req.service_data_len = 0;
+	req.manufacturer_len = 0;
+	req.service_uuid_len = 0;
+	process_request(BTT_GATT_CLIENT_REQ_SET_ADV_DATA, &req);
 }
