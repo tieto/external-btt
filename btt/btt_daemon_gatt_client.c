@@ -79,6 +79,20 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		status = gatt_client_if->unregister_client((msg.client_if));
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_CONNECT:
+	{
+		struct btt_gatt_client_connect msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		status = gatt_client_if->connect(msg.client_if, &msg.addr,
+				(bool) msg.is_direct);
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
@@ -239,10 +253,24 @@ static void scan_result_cb(bt_bdaddr_t *bda, int rssi, uint8_t *adv_data)
 }
 
 static void connect_cb(int conn_id, int status, int client_if,
-		bt_bdaddr_t* bda)
+		bt_bdaddr_t *bda)
 {
+	struct btt_gatt_client_cb_connect btt_cb;
+
 	BTT_LOG_D("Callback_GC Connect");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_CONNECT;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_connect)
+				- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.status = status;
+	btt_cb.client_if = client_if;
+	memcpy(&btt_cb.bda, bda, 6);
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, (const char *) &btt_cb,
+			sizeof(struct btt_gatt_client_cb_connect), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static void disconnect_cb(int conn_id, int status, int client_if,

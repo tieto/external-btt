@@ -68,6 +68,14 @@ struct btt_gatt_client_unregister_client {
 	int client_if;
 };
 
+struct btt_gatt_client_connect {
+	struct btt_message hdr;
+
+	int client_if;
+	bt_bdaddr_t addr;
+	int is_direct;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
@@ -129,6 +137,15 @@ struct btt_gatt_client_cb_bt_status {
 	struct btt_gatt_client_cb_hdr hdr;
 
 	bt_status_t status;
+};
+
+struct btt_gatt_client_cb_connect {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int conn_id;
+	int status;
+	int client_if;
+	bt_bdaddr_t bda;
 };
 
 extern void run_gatt_client(int argc, char **argv);
