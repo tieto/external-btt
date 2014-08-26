@@ -98,6 +98,25 @@ struct btt_gatt_client_listen {
 	int start;
 };
 
+struct btt_gatt_client_set_adv_data {
+	struct btt_message hdr;
+
+	/* for the sake of Bluedroid's naming*/
+	int server_if;
+	int set_scan_rsp;
+	int include_name;
+	int include_txpower;
+	int min_interval;
+	int max_interval;
+	int appearance;
+	uint16_t manufacturer_len;
+	char manufacturer_data[64];
+	uint16_t service_data_len;
+	char service_data[64];
+	uint16_t service_uuid_len;
+	char service_uuid[64];
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
