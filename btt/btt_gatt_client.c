@@ -25,6 +25,7 @@ static void run_gatt_client_help(int argc, char **argv);
 static void run_gatt_client_scan(int argc, char **argv);
 static void run_gatt_client_register_client(int argc, char **argv);
 static void run_gatt_client_un_register_client(int argc, char **argv);
+static void run_gatt_client_connect(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -41,7 +42,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "scan",							"<client_if>",				run_gatt_client_scan}, 2, 2},
 		{{ "register_client",				"<16-bits UUID>", run_gatt_client_register_client}, 2, 2},
 		{{ "unregister_client",				"<client_if>", run_gatt_client_un_register_client}, 2, 2},
-		{{ "connect",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "connect",						"<client_if> <BD_ADDR> <is_direct>", run_gatt_client_connect}, 4, 4},
 		{{ "disconnect",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "listen",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "refresh",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -238,6 +239,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_CONNECT:
+	{
+		struct btt_gatt_client_connect *connect;
+
+		connect = (struct btt_gatt_client_connect *) data;
+		connect->hdr.command = BTT_CMD_GATT_CLIENT_CONNECT;
+		connect->hdr.length = sizeof(struct btt_gatt_client_connect)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, connect,
+				sizeof(struct btt_gatt_client_connect), 0) == -1)
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -329,6 +345,26 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		*wait_for_msg = FALSE;
 		return TRUE;
 	}
+	case BTT_GATT_CLIENT_CB_CONNECT:
+	{
+		struct btt_gatt_client_cb_connect cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_CONNECT) {
+			BTT_LOG_S("Address: ");
+			print_bdaddr(cb.bda.address);
+			BTT_LOG_S("\nConnection ID: %d\n", cb.conn_id);
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
 	default:
 		*wait_for_msg = FALSE;
 		break;
@@ -411,4 +447,20 @@ static void run_gatt_client_un_register_client(int argc, char **argv)
 
 	sscanf(argv[1], "%d", &req.client_if);
 	process_request(BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT, &req);
+}
+
+static void run_gatt_client_connect(int argc, char **argv)
+{
+	struct btt_gatt_client_connect req;
+
+	sscanf(argv[1], "%d", &req.client_if);
+
+	if(!sscanf_bdaddr(argv[2], req.addr.address)) {
+		BTT_LOG_S("Error: Incorrect address\n");
+		return;
+	}
+
+	sscanf(argv[3], "%d", &req.is_direct);
+
+	process_request(BTT_GATT_CLIENT_REQ_CONNECT, &req);
 }

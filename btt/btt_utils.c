@@ -451,3 +451,12 @@ struct list_element *list_clear(struct list_element *list,
 
 	return NULL;
 }
+
+bool sscanf_bdaddr(char *src, uint8_t *dest)
+{
+	if(sscanf(src, "%"SCNx8":%"SCNx8":%"SCNx8":%"SCNx8":%"SCNx8":%"SCNx8,
+			&dest[0], &dest[1], &dest[2], &dest[3], &dest[4], &dest[5]) != EOF)
+		return TRUE;
+
+	return FALSE;
+}
