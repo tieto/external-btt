@@ -21,18 +21,21 @@
 #define BTT_GATT_SERVER_H
 
 #include "btt.h"
+#include <hardware/bt_gatt_types.h>
 
 enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_REGISTER_SERVER = 3000,
 	BTT_GATT_SERVER_REQ_UNREGISTER_SERVER,
 	BTT_GATT_SERVER_REQ_CONNECT,
 	BTT_GATT_SERVER_REQ_DISCONNECT,
+	BTT_GATT_SERVER_REQ_ADD_SERVICE,
 	BTT_GATT_SERVER_REQ_END
 };
 
 enum btt_gatt_server_cb_t {
 	BTT_GATT_SERVER_CB_REGISTER_SERVER = 2000,
 	BTT_GATT_SERVER_CB_CONNECT,
+	BTT_GATT_SERVER_CB_ADD_SERVICE,
 	BTT_GATT_SERVER_CB_END
 };
 
@@ -64,6 +67,14 @@ struct btt_gatt_server_disconnect {
 	int conn_id;
 };
 
+struct btt_gatt_server_add_service {
+	struct btt_message hdr;
+
+	int server_if;
+	btgatt_srvc_id_t srvc_id;
+	int num_handles;
+};
+
 /* Structures for callbacks */
 
 struct btt_gatt_server_cb_hdr {
@@ -87,6 +98,15 @@ struct btt_gatt_server_cb_connect {
 	int server_if;
 	int connected;
 	bt_bdaddr_t bda;
+};
+
+struct btt_gatt_server_cb_add_service {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int status;
+	int server_if;
+	btgatt_srvc_id_t srvc_id;
+	int srvc_handle;
 };
 
 struct btt_gatt_server_cb_status {
