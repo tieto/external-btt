@@ -279,7 +279,7 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		BTT_LOG_S("GATT Client request status: %s\n",
 				bt_status_string[stat.status]);
 		*wait_for_msg = (((stat.status != BT_STATUS_SUCCESS) || (type
-				!= BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT)) ? FALSE : TRUE);
+				== BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT)) ? FALSE : TRUE);
 		return TRUE;
 	}
 	case BTT_GATT_CLIENT_CB_SCAN_RESULT:
