@@ -460,3 +460,34 @@ bool sscanf_bdaddr(char *src, uint8_t *dest)
 
 	return FALSE;
 }
+
+/* function return length of hex number
+ * or -1 and -2 if error occurred */
+int string_to_hex(char *src, uint8_t *dest)
+{
+	int len_s = strlen(src);
+	int len_h;
+	char tmp[3] = {0, 0, '\0'};
+	int i, j = 0;
+
+	if (len_s % 2) {
+		BTT_LOG_S("Error: Wrong argument length.\n");
+		return -1;
+	}
+
+	len_h = len_s / 2;
+
+	for (i = 0; i < len_s; ++i) {
+		if (!isxdigit(src[i])) {
+			BTT_LOG_S("Error: Wrong character in argument.\n");
+			return -2;
+		}
+
+		tmp[(i % 2)] = src[i];
+
+		if (i % 2)
+			dest[j++] = strtoul(tmp, '\0', 16);
+	}
+
+	return len_h;
+}

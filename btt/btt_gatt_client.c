@@ -30,6 +30,7 @@ static void run_gatt_client_disconnect(int argc, char **argv);
 static void run_gatt_client_read_remote_rssi(int argc, char **argv);
 static void run_gatt_client_listen(int argc, char **argv);
 static void run_gatt_client_set_adv_data_basic(int argc, char **argv);
+static void run_gatt_client_set_adv_data(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -62,6 +63,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "read_remote_rssi",				"<BD_ADDR> <client_if>", run_gatt_client_read_remote_rssi}, 3, 3},
 		{{ "get_device_type",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "set_adv_data_basic",			"<client_if> <set_scan_rsp> <include_name> <include_txpower> <min_interval> <max_interval> <appearance>", run_gatt_client_set_adv_data_basic}, 8, 8},
+		{{ "set_adv_data",					"<client_if> <manuf_data> <service_data> <service_uuid>", run_gatt_client_set_adv_data}, 5, 5},
 		{{ "test_command",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 };
 
@@ -640,5 +642,47 @@ static void run_gatt_client_set_adv_data_basic(int argc, char **argv)
 	req.service_data_len = 0;
 	req.manufacturer_len = 0;
 	req.service_uuid_len = 0;
+	process_request(BTT_GATT_CLIENT_REQ_SET_ADV_DATA, &req);
+}
+
+/* default settings of advertisement data taken:
+ * - include name
+ * - include txpower
+ * - exclude appearance info
+ * - exclude info about interval
+ * - set scan response */
+static void run_gatt_client_set_adv_data(int argc, char **argv)
+{
+	struct btt_gatt_client_set_adv_data req;
+	unsigned char hex[256];
+	int len = 0;
+
+	sscanf(argv[1], "%d", &req.server_if);
+
+	if ((len = string_to_hex(argv[2], hex)) < 0)
+		return;
+
+	memcpy(req.manufacturer_data, hex, len);
+	req.manufacturer_len = (uint16_t) len;
+
+	if ((len = string_to_hex(argv[3], hex)) < 0)
+		return;
+
+	memcpy(req.service_data, hex, len);
+	req.service_data_len = (uint16_t) len;
+
+	if ((len = string_to_hex(argv[4], hex)) < 0)
+		return;
+
+	memcpy(req.service_uuid, hex, len);
+	req.service_uuid_len = (uint16_t) len;
+
+	req.include_name = 1;
+	req.include_txpower = 1;
+	req.appearance = 0;
+	req.min_interval = 0;
+	req.max_interval = 0;
+	req.set_scan_rsp = 1;
+
 	process_request(BTT_GATT_CLIENT_REQ_SET_ADV_DATA, &req);
 }
