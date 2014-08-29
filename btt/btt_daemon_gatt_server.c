@@ -102,6 +102,20 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 		gatt_server_if->add_service(msg.server_if, &msg.srvc_id, msg.num_handles);
 		break;
 	}
+	case BTT_GATT_SERVER_REQ_ADD_INCLUDED_SERVICE:
+	{
+		struct btt_gatt_server_add_included_srvc msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Received invalid btt_gatt_server_add_included_srvc\n");
+			close(socket_remote);
+			return;
+		}
+
+		gatt_server_if->add_included_service( msg.server_if, msg.service_handle,
+				msg.included_handle);
+		break;
+	}
 	default: break;
 	}
 }
@@ -163,11 +177,29 @@ static void add_service_cb(int status, int server_if, btgatt_srvc_id_t *srvc_id,
 		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
 }
 
+static void add_included_srvc_cb(int status, int server_if, int srvc_handle, int incl_srvc_handle)
+{
+	struct btt_gatt_server_cb_add_included_srvc btt_cb;
+
+	BTT_LOG_D("Callback GS Add Included Service");
+	btt_cb.hdr.type = BTT_GATT_SERVER_CB_ADD_INCLUDED_SERVICE;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_add_included_srvc)
+			- sizeof(struct btt_gatt_server_cb_hdr);
+	btt_cb.status = status;
+	btt_cb.server_if = server_if;
+	btt_cb.srvc_handle = srvc_handle;
+	btt_cb.incl_srvc_handle = incl_srvc_handle;
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_server_cb_add_included_srvc), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
+}
+
 static btgatt_server_callbacks_t sGattServerCallbacks = {
 		register_server_cb,
 		connect_cb,
 		add_service_cb,
-		NULL,
+		add_included_srvc_cb,
 		NULL,
 		NULL,
 		NULL,
