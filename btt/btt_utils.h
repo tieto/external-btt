@@ -49,7 +49,7 @@ struct list_element *list_clear(struct list_element *list,
 extern bool sscanf_bdaddr(char *src, uint8_t *dest);
 extern int string_to_hex(char *src, uint8_t *dest);
 extern bool sscanf_UUID(char *src, uint8_t *dest);
-extern void printf_UUID_128(uint8_t *src);
+extern void printf_UUID_128(uint8_t *src, bool invert);
 
 /* return FALSE if length of received structure is different
  * from expected length */
