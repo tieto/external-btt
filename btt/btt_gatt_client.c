@@ -34,6 +34,7 @@ static void run_gatt_client_set_adv_data_basic(int argc, char **argv);
 static void run_gatt_client_set_adv_data(int argc, char **argv);
 static void run_gatt_client_get_device_type(int argc, char **argv);
 static void run_gatt_client_refresh(int argc, char **argv);
+static void run_gatt_client_search_service(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -44,6 +45,8 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		bool *wait_for_msg, int server_sock);
 static bool process_stdin(bool *select_used, int client_if);
+static void printf_service(btgatt_srvc_id_t srv);
+static bool process_UUID_sscanf(char *src, uint8_t *dest);
 
 static const struct extended_command gatt_client_commands[] = {
 		{{ "help",							"",							run_gatt_client_help}, 1, MAX_ARGC},
@@ -54,7 +57,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "disconnect",					"<client_if> <BD_ADDR> <conn_id>", run_gatt_client_disconnect}, 4, 4},
 		{{ "listen",						"<client_if> <start>", run_gatt_client_listen}, 3, 3},
 		{{ "refresh",						"<client_if> <BD_ADDR>", run_gatt_client_refresh}, 3, 3},
-		{{ "search_service",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "search_service",				"<conn_id> [16bit_UUID_filter | 128bit_UUID_filter]", run_gatt_client_search_service}, 2, 3},
 		{{ "get_included_service",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "get_charakteristic",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "get_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -358,6 +361,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_SEARCH_SERVICE:
+	{
+		struct btt_gatt_client_search_service *search;
+
+		search = (struct btt_gatt_client_search_service *) data;
+		search->hdr.command = BTT_CMD_GATT_CLIENT_SEARCH_SERVICE;
+		search->hdr.length = sizeof(struct btt_gatt_client_search_service)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, search,
+				sizeof(struct btt_gatt_client_search_service), 0) == -1)
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -550,12 +568,55 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		*wait_for_msg = FALSE;
 		return TRUE;
 	}
+	case BTT_GATT_CLIENT_CB_SEARCH_RESULT:
+	{
+		struct btt_gatt_client_cb_search_result cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_SEARCH_SERVICE) {
+			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+			printf_service(cb.srvc_id);
+			BTT_LOG_S("\n");
+		}
+
+		*wait_for_msg = TRUE;
+		return TRUE;
+	}
+	case BTT_GATT_CLIENT_CB_SEARCH_COMPLETE:
+	{
+		struct btt_gatt_client_cb_search_complete cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_SEARCH_SERVICE) {
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
 	default:
 		*wait_for_msg = FALSE;
 		break;
 	}
 
 	return TRUE;
+}
+
+static void printf_service(btgatt_srvc_id_t srv)
+{
+	BTT_LOG_S("Service is %s.\n", (srv.is_primary ?
+			"primary" : "secondary"));
+	BTT_LOG_S("Instance Id: %d.\n", srv.id.inst_id);
+	printf_UUID_128(srv.id.uuid.uu, TRUE, FALSE);
 }
 
 /* presently used only by scan */
@@ -751,4 +812,44 @@ static void run_gatt_client_refresh(int argc, char **argv)
 	}
 
 	process_request(BTT_GATT_CLIENT_REQ_REFRESH, &req, DEFAULT_TIME_SEC);
+}
+
+static bool process_UUID_sscanf(char *src, uint8_t *dest)
+{
+	if (strlen(src) == 4) {
+		if (!sscanf_UUID(src, dest, TRUE, FALSE)) {
+			BTT_LOG_S("Error: Incorrect UUID\n");
+			return FALSE;
+		}
+	} else if (strlen(src) == 36) {
+		if (!sscanf_UUID_128(src, dest, TRUE, FALSE)) {
+			BTT_LOG_S("Error: Incorrect UUID\n");
+			return FALSE;
+		}
+	} else {
+		BTT_LOG_S("Error: Incorrect UUID\n");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static void run_gatt_client_search_service(int argc, char **argv)
+{
+	struct btt_gatt_client_search_service req;
+	char input[256];
+
+	sscanf(argv[1], "%d", &req.conn_id);
+
+	if (argc == 3) {
+		sscanf(argv[2], "%s", input);
+		req.is_filter = 1;
+
+		if (!process_UUID_sscanf(input, req.filter_uuid.uu))
+			return;
+	} else {
+		req.is_filter = 0;
+	}
+
+	process_request(BTT_GATT_CLIENT_REQ_SEARCH_SERVICE, &req, LONG_TIME_SEC);
 }

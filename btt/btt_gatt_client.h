@@ -21,6 +21,7 @@
 #define BTT_GATT_CLIENT_H
 
 #include "btt.h"
+#include <hardware/bt_gatt_types.h>
 
 enum btt_gatt_client_req_t {
 	/*TODO: better number */
@@ -130,6 +131,14 @@ struct btt_gatt_client_refresh {
 	bt_bdaddr_t addr;
 };
 
+struct btt_gatt_client_search_service {
+	struct btt_message hdr;
+
+	int conn_id;
+	bt_uuid_t filter_uuid;
+	int is_filter;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
@@ -232,6 +241,20 @@ struct btt_gatt_client_cb_get_device_type {
 	struct btt_gatt_client_cb_hdr hdr;
 
 	int type;
+};
+
+struct btt_gatt_client_cb_search_result {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	 int conn_id;
+	 btgatt_srvc_id_t srvc_id;
+};
+
+struct btt_gatt_client_cb_search_complete {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int conn_id;
+	int status;
 };
 
 extern void run_gatt_client(int argc, char **argv);

@@ -181,6 +181,24 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		status = gatt_client_if->refresh(msg.client_if, &msg.addr);
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_SEARCH_SERVICE:
+	{
+		struct btt_gatt_client_search_service msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		if (!msg.is_filter)
+			status = gatt_client_if->search_service(msg.conn_id, NULL);
+		else
+			status = gatt_client_if->search_service(msg.conn_id,
+					&msg.filter_uuid);
+
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
@@ -389,14 +407,39 @@ static void disconnect_cb(int conn_id, int status, int client_if,
 
 static void search_complete_cb(int conn_id, int status)
 {
+	struct btt_gatt_client_cb_search_complete btt_cb;
+
 	BTT_LOG_D("Callback_GC Search Complete");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_SEARCH_COMPLETE;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_search_complete)
+			- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.status = status;
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_client_cb_search_complete), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static void search_result_cb(int conn_id, btgatt_srvc_id_t *srvc_id)
 {
+	struct btt_gatt_client_cb_search_result btt_cb;
+
 	BTT_LOG_D("Callback_GC Search Result");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_SEARCH_RESULT;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_search_result)
+			- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.srvc_id = *srvc_id;
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_client_cb_search_result), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
+
 }
 
 static void get_characteristic_cb(int conn_id, int status,
