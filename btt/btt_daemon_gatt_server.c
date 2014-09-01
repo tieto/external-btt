@@ -130,6 +130,20 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 				msg.properties, msg.permissions);
 		break;
 	}
+	case BTT_GATT_SERVER_CMD_ADD_DESCRIPTOR:
+	{
+		struct btt_gatt_server_add_descriptor msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Received invalid btt_gatt_server_add_descriptor\n");
+			close(socket_remote);
+			return;
+		}
+
+		gatt_server_if->add_descriptor(msg.server_if, msg.service_handle,
+				&msg.uuid, msg.permissions);
+		break;
+	}
 	default: break;
 	}
 }
@@ -229,13 +243,33 @@ static void add_characteristic_cb(int status, int server_if, bt_uuid_t *uuid,
 		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
 }
 
+static void add_descriptor_cb(int status, int server_if, bt_uuid_t *uuid,
+		int srvc_handle, int descr_handle)
+{
+	struct btt_gatt_server_cb_add_descriptor btt_cb;
+
+	BTT_LOG_D("Callback GS Add Descriptor");
+	btt_cb.hdr.type = BTT_GATT_SERVER_CB_ADD_DESCRIPTOR;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_add_descriptor)
+				- sizeof(struct btt_gatt_server_cb_hdr);
+	btt_cb.status = status;
+	btt_cb.server_if = server_if;
+	memcpy(&btt_cb.uuid, uuid, sizeof(bt_uuid_t));
+	btt_cb.srvc_handle = srvc_handle;
+	btt_cb.descr_handle = descr_handle;
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_server_cb_add_descriptor), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
+}
+
 static btgatt_server_callbacks_t sGattServerCallbacks = {
 		register_server_cb,
 		connect_cb,
 		add_service_cb,
 		add_included_srvc_cb,
 		add_characteristic_cb,
-		NULL,
+		add_descriptor_cb,
 		NULL,
 		NULL,
 		NULL,
