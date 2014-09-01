@@ -32,8 +32,10 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		const int socket_remote)
 {
 	struct btt_gatt_client_cb_bt_status bt_stat;
+	struct btt_gatt_client_cb_get_device_type get_dev_type_cb;
 	bt_status_t status = BT_STATUS_SUCCESS;
 
+	get_dev_type_cb.hdr.type = BTT_GATT_CLIENT_CB_END;
 	bt_stat.hdr.type = BTT_GATT_CLIENT_CB_BT_STATUS;
 	bt_stat.hdr.length = sizeof(struct btt_gatt_client_cb_bt_status)
 					- sizeof(struct btt_gatt_client_cb_hdr);
@@ -150,6 +152,22 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 				msg.service_uuid_len, msg.service_uuid);
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_GET_DEVICE_TYPE:
+	{
+		struct btt_gatt_client_get_device_type msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		get_dev_type_cb.type = gatt_client_if->get_device_type(&msg.addr);
+		get_dev_type_cb.hdr.type = BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE;
+		get_dev_type_cb.hdr.length = sizeof(struct btt_gatt_client_cb_get_device_type)
+					- sizeof(struct btt_gatt_client_cb_hdr);
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
@@ -162,6 +180,11 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 			sizeof(struct btt_gatt_client_cb_bt_status), 0) == -1) {
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 	}
+
+	if (get_dev_type_cb.hdr.type == BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE)
+		if (send(socket_remote, (const char *) &get_dev_type_cb,
+				sizeof(struct btt_gatt_client_cb_scan_result), 0) == -1)
+			BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 /************************************************************/

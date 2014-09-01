@@ -117,6 +117,12 @@ struct btt_gatt_client_set_adv_data {
 	char service_uuid[64];
 };
 
+struct btt_gatt_client_get_device_type {
+	struct btt_message hdr;
+
+	bt_bdaddr_t addr;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
@@ -138,6 +144,7 @@ enum btt_gatt_client_cb_t {
 	BTT_GATT_CLIENT_CB_READ_REMOTE_RSSI,
 	BTT_GATT_CLIENT_CB_LISTEN,
 	BTT_GATT_CLIENT_CB_BT_STATUS,
+	BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE,
 	BTT_GATT_CLIENT_CB_END
 };
 
@@ -212,6 +219,12 @@ struct btt_gatt_client_cb_listen {
 
 	int server_if;
 	int status;
+};
+
+struct btt_gatt_client_cb_get_device_type {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int type;
 };
 
 extern void run_gatt_client(int argc, char **argv);

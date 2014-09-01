@@ -31,6 +31,7 @@ static void run_gatt_client_read_remote_rssi(int argc, char **argv);
 static void run_gatt_client_listen(int argc, char **argv);
 static void run_gatt_client_set_adv_data_basic(int argc, char **argv);
 static void run_gatt_client_set_adv_data(int argc, char **argv);
+static void run_gatt_client_get_device_type(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -61,7 +62,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "register_for_notification",		"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "deregister_for_notification",	"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "read_remote_rssi",				"<BD_ADDR> <client_if>", run_gatt_client_read_remote_rssi}, 3, 3},
-		{{ "get_device_type",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "get_device_type",				"<BD_ADDR>", run_gatt_client_get_device_type}, 2, 2},
 		{{ "set_adv_data_basic",			"<client_if> <set_scan_rsp> <include_name> <include_txpower> <min_interval> <max_interval> <appearance>", run_gatt_client_set_adv_data_basic}, 8, 8},
 		{{ "set_adv_data",					"<client_if> <manuf_data> <service_data> <service_uuid>", run_gatt_client_set_adv_data}, 5, 5},
 		{{ "test_command",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -320,6 +321,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_GET_DEVICE_TYPE:
+	{
+		struct btt_gatt_client_get_device_type *get;
+
+		get = (struct btt_gatt_client_get_device_type *) data;
+		get->hdr.command = BTT_CMD_GATT_CLIENT_GET_DEVICE_TYPE;
+		get->hdr.length = sizeof(struct btt_gatt_client_get_device_type)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, get,
+				sizeof(struct btt_gatt_client_listen), 0) == -1)
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -484,6 +500,36 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		if (type == BTT_GATT_CLIENT_REQ_LISTEN) {
 			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
 			BTT_LOG_S("Client interface: %d\n\n", cb.server_if);
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
+	case BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE:
+	{
+		struct btt_gatt_client_cb_get_device_type cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_GET_DEVICE_TYPE) {
+			BTT_LOG_S("Device type: ");
+
+			switch (cb.type) {
+			case BT_DEVICE_DEVTYPE_BREDR:
+				BTT_LOG_S("BR/EDR\n");
+				break;
+			case BT_DEVICE_DEVTYPE_BLE:
+				BTT_LOG_S("LE\n");
+				break;
+			case BT_DEVICE_DEVTYPE_DUAL:
+				BTT_LOG_S("DUAL\n");
+				break;
+			default:
+				BTT_LOG_S("Unknown type or error: %d\n", cb.type);
+			}
 		}
 
 		*wait_for_msg = FALSE;
@@ -685,4 +731,16 @@ static void run_gatt_client_set_adv_data(int argc, char **argv)
 	req.set_scan_rsp = 1;
 
 	process_request(BTT_GATT_CLIENT_REQ_SET_ADV_DATA, &req);
+}
+
+static void run_gatt_client_get_device_type(int argc, char **argv)
+{
+	struct btt_gatt_client_get_device_type req;
+
+	if (!sscanf_bdaddr(argv[1], req.addr.address)) {
+		BTT_LOG_S("Error: Incorrect address\n");
+		return;
+	}
+
+	process_request(BTT_GATT_CLIENT_REQ_GET_DEVICE_TYPE, &req);
 }
