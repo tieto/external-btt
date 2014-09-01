@@ -485,17 +485,27 @@ bool sscanf_UUID(char *src, uint8_t *dest)
 	return TRUE;
 }
 
-void printf_UUID_128(uint8_t *src)
+void printf_UUID_128(uint8_t *src, bool invert)
 {
-	unsigned int i;
+	unsigned int i, ulen = sizeof(bt_uuid_t);
+	uint8_t tmp;
 
 	BTT_LOG_S("UUID: ");
 
-	for(i = 0; i < sizeof(bt_uuid_t); i++) {
+	/* inverting source array */
+	if (invert)
+		for (i = 0; i < ulen / 2; i++) {
+			tmp = src[i];
+			src[i] = src[(ulen - 1) - i];
+			src[(ulen - 1) - i] = tmp;
+		}
+
+	for (i = 0; i < ulen; i++) {
 		BTT_LOG_S("%.2X", src[i]);
 
 		if (i == 3 || i == 5 || i == 7 || i== 9)
 			BTT_LOG_S("-");
+
 	}
 
 	BTT_LOG_S("\n");
