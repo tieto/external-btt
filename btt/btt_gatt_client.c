@@ -41,7 +41,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 		int server_sock, bool *select_used);
 static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		bool *wait_for_msg, int server_sock);
-static bool process_stdin(bool *select_used);
+static bool process_stdin(bool *select_used, int client_if);
 
 static const struct extended_command gatt_client_commands[] = {
 		{{ "help",							"",							run_gatt_client_help}, 1, MAX_ARGC},
@@ -81,6 +81,7 @@ static void process_request(enum btt_gatt_client_req_t type, void *data)
 {
 	int server_sock;
 	bool wait_for_msg = TRUE;
+	int client_if = -1;
 
 	/*select variables*/
 	/*presently select is needed only by scan*/
@@ -103,6 +104,9 @@ static void process_request(enum btt_gatt_client_req_t type, void *data)
 		FD_SET(server_sock, &set);
 	}
 
+	if (type == BTT_GATT_CLIENT_REQ_SCAN)
+		client_if = ((struct btt_gatt_client_scan *) data)->client_if;
+
 	while (1) {
 
 		if (select_used) {
@@ -121,7 +125,7 @@ static void process_request(enum btt_gatt_client_req_t type, void *data)
 				return;
 			}
 		} else if (select_used && FD_ISSET(fileno(stdin), &set_cp))
-			if (process_stdin(&select_used))
+			if (process_stdin(&select_used, client_if))
 				return;
 
 		if (!wait_for_msg) {
@@ -544,16 +548,18 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 }
 
 /* presently used only by scan */
-static bool process_stdin(bool *select_used)
+static bool process_stdin(bool *select_used, int client_if)
 {
 	char buf[256];
-	unsigned int tmp = 0;
+	struct btt_gatt_client_scan tmp;
 	int server_sock;
 
 	scanf("%s", buf);
 
 	if (!strncmp(buf, "stop", 4)) {
 		server_sock = create_daemon_socket();
+		tmp.client_if = client_if;
+		tmp.start = 0;
 
 		if (process_send_to_daemon(BTT_GATT_CLIENT_REQ_SCAN, &tmp,
 				server_sock, select_used)) {
