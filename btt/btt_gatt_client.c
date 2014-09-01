@@ -32,6 +32,7 @@ static void run_gatt_client_listen(int argc, char **argv);
 static void run_gatt_client_set_adv_data_basic(int argc, char **argv);
 static void run_gatt_client_set_adv_data(int argc, char **argv);
 static void run_gatt_client_get_device_type(int argc, char **argv);
+static void run_gatt_client_refresh(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -51,7 +52,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "connect",						"<client_if> <BD_ADDR> <is_direct>", run_gatt_client_connect}, 4, 4},
 		{{ "disconnect",					"<client_if> <BD_ADDR> <conn_id>", run_gatt_client_disconnect}, 4, 4},
 		{{ "listen",						"<client_if> <start>", run_gatt_client_listen}, 3, 3},
-		{{ "refresh",						"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "refresh",						"<client_if> <BD_ADDR>", run_gatt_client_refresh}, 3, 3},
 		{{ "search_service",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "get_included_service",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "get_charakteristic",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -340,6 +341,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_REFRESH:
+	{
+		struct btt_gatt_client_refresh *refresh;
+
+		refresh = (struct btt_gatt_client_refresh *) data;
+		refresh->hdr.command = BTT_CMD_GATT_CLIENT_REFRESH;
+		refresh->hdr.length = sizeof(struct btt_gatt_client_refresh)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, refresh,
+				sizeof(struct btt_gatt_client_refresh), 0) == -1)
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -382,7 +398,9 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 				bt_status_string[stat.status]);
 		*wait_for_msg = (((stat.status != BT_STATUS_SUCCESS) || (type
 				== BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT) || (type
-						== BTT_GATT_CLIENT_REQ_SET_ADV_DATA)) ? FALSE : TRUE);
+						== BTT_GATT_CLIENT_REQ_SET_ADV_DATA) || (type
+								== BTT_GATT_CLIENT_REQ_REFRESH)) ?
+										FALSE : TRUE);
 		return TRUE;
 	}
 	case BTT_GATT_CLIENT_CB_SCAN_RESULT:
@@ -749,4 +767,18 @@ static void run_gatt_client_get_device_type(int argc, char **argv)
 	}
 
 	process_request(BTT_GATT_CLIENT_REQ_GET_DEVICE_TYPE, &req);
+}
+
+static void run_gatt_client_refresh(int argc, char **argv)
+{
+	struct btt_gatt_client_refresh req;
+
+	sscanf(argv[1], "%d", &req.client_if);
+
+	if (!sscanf_bdaddr(argv[2], req.addr.address)) {
+		BTT_LOG_S("Error: Incorrect address\n");
+		return;
+	}
+
+	process_request(BTT_GATT_CLIENT_REQ_REFRESH, &req);
 }

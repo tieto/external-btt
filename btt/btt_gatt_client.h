@@ -123,6 +123,13 @@ struct btt_gatt_client_get_device_type {
 	bt_bdaddr_t addr;
 };
 
+struct btt_gatt_client_refresh {
+	struct btt_message hdr;
+
+	int client_if;
+	bt_bdaddr_t addr;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
