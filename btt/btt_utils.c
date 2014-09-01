@@ -461,6 +461,46 @@ bool sscanf_bdaddr(char *src, uint8_t *dest)
 	return FALSE;
 }
 
+bool sscanf_UUID(char *src, uint8_t *dest)
+{
+	uint8_t tab[2];
+	char *checkString = NULL;
+	long convertedString = strtoul(src, &checkString, 16);
+
+	if(strlen(checkString))
+		return FALSE;
+
+	tab[0] = (convertedString >> 8) & 0x00FF;
+	tab[1] = convertedString & 0x00FF;
+
+	/* BASE_UUID: 00000000-0000-1000-8000-00805F9B34FB */
+	uint8_t bt_uuid[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
+			0x00, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB };
+
+	bt_uuid[2] = tab[0];
+	bt_uuid[3] = tab[1];
+
+	memcpy(dest, bt_uuid, sizeof(bt_uuid));
+
+	return TRUE;
+}
+
+void printf_UUID_128(uint8_t *src)
+{
+	unsigned int i;
+
+	BTT_LOG_S("UUID: ");
+
+	for(i = 0; i < sizeof(bt_uuid_t); i++) {
+		BTT_LOG_S("%.2X", src[i]);
+
+		if (i == 3 || i == 5 || i == 7 || i== 9)
+			BTT_LOG_S("-");
+	}
+
+	BTT_LOG_S("\n");
+}
+
 /* function return length of hex number
  * or -1 and -2 if error occurred */
 int string_to_hex(char *src, uint8_t *dest)
