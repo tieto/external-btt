@@ -27,6 +27,7 @@ static void run_gatt_server_connect(int argc, char **argv);
 static void run_gatt_server_disconnect(int argc, char **argv);
 static void run_gatt_server_add_service(int argc, char **argv);
 static void run_gatt_server_add_included_service(int argc, char **argv);
+static void run_gatt_server_add_characteristic(int argc, char **argv);
 
 static const struct extended_command gatt_server_commands[] = {
 		{{ "help",						"",									run_gatt_server_help}, 1, MAX_ARGC},
@@ -38,7 +39,8 @@ static const struct extended_command gatt_server_commands[] = {
 				run_gatt_server_add_service}, 6, 6},
 		{{ "add_included_service",		"<server_if><service_handle><included_handle>",
 				run_gatt_server_add_included_service}, 4, 4},
-		{{ "add_charakteristic",		"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "add_characteristic",		"<server_if><service_handle><16-bits UUID><properties><permissions>",
+				run_gatt_server_add_characteristic}, 6, 6},
 		{{ "add_descriptor",			"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
 		{{ "start_service",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
 		{{ "stop_service",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
@@ -188,6 +190,23 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		break;
 	}
+	case BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC:
+	{
+		struct btt_gatt_server_add_characteristic *add_characteristic =
+				(struct btt_gatt_server_add_characteristic*) data;
+
+		add_characteristic->hdr.command = BTT_GATT_SERVER_CMD_ADD_CHARAKTERISTIC;
+		add_characteristic->hdr.length = sizeof(struct btt_gatt_server_add_characteristic)
+						- sizeof(struct btt_message);
+
+		if (send(server_sock, add_characteristic,
+				sizeof(struct btt_gatt_server_add_characteristic), 0) == -1) {
+			close(server_sock);
+			return;
+		}
+
+		break;
+	}
 	default:
 		break;
 	}
@@ -304,6 +323,26 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			return;
 		}
+		case BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC:
+		{
+			struct btt_gatt_server_cb_add_characteristic cb;
+
+			memset(&cb,0,sizeof(cb));
+
+			if (!RECV(&cb,server_sock)) {
+				BTT_LOG_S("Error: incorrect size of received structure.\n");
+				return;
+			}
+
+			if (type == BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC) {
+				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+				BTT_LOG_S("Server interface: %d\n", cb.server_if);
+				printf_UUID_128(cb.uuid.uu, FALSE);
+				BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
+				BTT_LOG_S("Characteristic Handle: %d\n\n", cb.char_handle);
+			}
+			return;
+		}
 		default:
 			buffer = malloc(btt_cb.length);
 
@@ -397,6 +436,25 @@ static void run_gatt_server_add_included_service(int argc, char **argv)
 	sscanf(argv[3], "%d", &req.included_handle);
 
 	process_request(BTT_GATT_SERVER_REQ_ADD_INCLUDED_SERVICE, &req);
+}
+
+static void run_gatt_server_add_characteristic(int argc, char **argv)
+{
+	struct btt_gatt_server_add_characteristic req;
+	uint8_t tab[2];
+
+	sscanf(argv[1], "%d", &req.server_if);
+	sscanf(argv[2], "%d", &req.service_handle);
+
+	if (!sscanf_UUID(argv[3], req.uuid.uu)) {
+			BTT_LOG_S("Error: Incorrect UUID\n");
+			return;
+	}
+
+	sscanf(argv[4], "%d", &req.properties);
+	sscanf(argv[5], "%d", &req.permissions);
+
+	process_request(BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC, &req);
 }
 
 void run_gatt_server(int argc, char **argv)

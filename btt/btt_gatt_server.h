@@ -30,6 +30,7 @@ enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_DISCONNECT,
 	BTT_GATT_SERVER_REQ_ADD_SERVICE,
 	BTT_GATT_SERVER_REQ_ADD_INCLUDED_SERVICE,
+	BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC,
 	BTT_GATT_SERVER_REQ_END
 };
 
@@ -38,6 +39,7 @@ enum btt_gatt_server_cb_t {
 	BTT_GATT_SERVER_CB_CONNECT,
 	BTT_GATT_SERVER_CB_ADD_SERVICE,
 	BTT_GATT_SERVER_CB_ADD_INCLUDED_SERVICE,
+	BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC,
 	BTT_GATT_SERVER_CB_END
 };
 
@@ -85,6 +87,16 @@ struct btt_gatt_server_add_included_srvc {
 	int included_handle;
 };
 
+struct btt_gatt_server_add_characteristic {
+	struct btt_message hdr;
+
+	int server_if;
+	int service_handle;
+	bt_uuid_t uuid;
+	int properties;
+	int permissions;
+};
+
 /* Structures for callbacks */
 
 struct btt_gatt_server_cb_hdr {
@@ -126,6 +138,16 @@ struct btt_gatt_server_cb_add_included_srvc {
 	int server_if;
 	int srvc_handle;
 	int incl_srvc_handle;
+};
+
+struct btt_gatt_server_cb_add_characteristic {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int status;
+	int server_if;
+	bt_uuid_t uuid;
+	int srvc_handle;
+	int char_handle;
 };
 
 struct btt_gatt_server_cb_status {
