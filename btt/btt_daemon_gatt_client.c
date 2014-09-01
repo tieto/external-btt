@@ -168,6 +168,19 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 					- sizeof(struct btt_gatt_client_cb_hdr);
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_REFRESH:
+	{
+		struct btt_gatt_client_refresh msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		status = gatt_client_if->refresh(msg.client_if, &msg.addr);
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
