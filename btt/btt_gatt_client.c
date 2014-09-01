@@ -187,7 +187,7 @@ static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
 
 static bool send_by_socket(int server_sock, void *data, size_t len, int flags)
 {
-	if (send(server_sock, (const char *) data, len, flags) == -1) {
+	if (send(server_sock, data, len, flags) == -1) {
 		close(server_sock);
 		return FALSE;
 	}

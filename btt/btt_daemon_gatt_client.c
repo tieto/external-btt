@@ -176,13 +176,13 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 	bt_stat.status = status;
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
 
-	if (send(socket_remote, (const char *) &bt_stat,
+	if (send(socket_remote, &bt_stat,
 			sizeof(struct btt_gatt_client_cb_bt_status), 0) == -1) {
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 	}
 
 	if (get_dev_type_cb.hdr.type == BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE)
-		if (send(socket_remote, (const char *) &get_dev_type_cb,
+		if (send(socket_remote, &get_dev_type_cb,
 				sizeof(struct btt_gatt_client_cb_scan_result), 0) == -1)
 			BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
@@ -289,7 +289,7 @@ static void register_client_cb(int status, int client_if,
 
 	BTT_LOG_D("Callback_GC Client Register");
 
-	if (send(socket_remote, (const char *) &btt_cb,
+	if (send(socket_remote, &btt_cb,
 			sizeof(struct btt_gatt_client_cb_register_client), 0) == -1)
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
@@ -322,7 +322,7 @@ static void scan_result_cb(bt_bdaddr_t *bda, int rssi, uint8_t *adv_data)
 		btt_cb.discoverable_mode = discoverable_mode_searcher(adv_data);
 		BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
 
-		if (send(socket_remote, (const char *) &btt_cb,
+		if (send(socket_remote, &btt_cb,
 				sizeof(struct btt_gatt_client_cb_scan_result), 0) == -1) {
 			BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 		}
@@ -348,7 +348,7 @@ static void connect_cb(int conn_id, int status, int client_if,
 	memcpy(&btt_cb.bda, bda, 6);
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
 
-	if (send(socket_remote, (const char *) &btt_cb,
+	if (send(socket_remote, &btt_cb,
 			sizeof(struct btt_gatt_client_cb_connect), 0) == -1)
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
@@ -369,7 +369,7 @@ static void disconnect_cb(int conn_id, int status, int client_if,
 	memcpy(&btt_cb.bda, bda, 6);
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
 
-	if (send(socket_remote, (const char *) &btt_cb,
+	if (send(socket_remote, &btt_cb,
 			sizeof(struct btt_gatt_client_cb_disconnect), 0) == -1)
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
@@ -470,7 +470,7 @@ static void read_remote_rssi_cb(int client_if, bt_bdaddr_t* bda,
 	memcpy(&btt_cb.addr.address, bda, 6);
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
 
-	if (send(socket_remote, (const char *) &btt_cb,
+	if (send(socket_remote, &btt_cb,
 			sizeof(struct btt_gatt_client_cb_register_client), 0) == -1)
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
@@ -488,7 +488,7 @@ static void listen_cb(int status, int server_if)
 	btt_cb.server_if = server_if;
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
 
-	if (send(socket_remote, (const char *) &btt_cb,
+	if (send(socket_remote, &btt_cb,
 			sizeof(struct btt_gatt_client_cb_listen), 0) == -1)
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
