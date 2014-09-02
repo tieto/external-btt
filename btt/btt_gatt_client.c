@@ -433,17 +433,8 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		}
 
 		if (type == BTT_GATT_CLIENT_REQ_REGISTER_CLIENT) {
-			BTT_LOG_S("UUID: ");
-
-			for (i = 0; i < sizeof(cb.app_uuid); i++) {
-				BTT_LOG_S("%.2X", cb.app_uuid.uu[i]);
-
-				/* formating UUID */
-				if (i == 3 || i == 5 || i==7 || i == 9)
-					BTT_LOG_S("-");
-			}
-
-			BTT_LOG_S("\nStatus: %s\n", (!cb.status) ? "OK" : "ERROR");
+			printf_UUID_128(cb.app_uuid.uu, FALSE);
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
 			BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
 		}
 
@@ -576,7 +567,6 @@ static bool process_stdin(bool *select_used, int client_if)
 
 	if (!strncmp(buf, "stop", 4)) {
 		server_sock = create_daemon_socket();
-		tmp.client_if = client_if;
 		tmp.start = 0;
 
 		if (process_send_to_daemon(BTT_GATT_CLIENT_REQ_SCAN, &tmp,
@@ -594,43 +584,18 @@ static bool process_stdin(bool *select_used, int client_if)
 	return FALSE;
 }
 
-/* returned memory block must be free */
-static bt_uuid_t *create_uuid(uint8_t *bit_16)
-{
-	uint8_t base[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
-			0x00, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB};
-	bt_uuid_t *pUUID = calloc(1, sizeof(bt_uuid_t));
-
-	base[2] = bit_16[1];
-	base[3] = bit_16[0];
-	memcpy(pUUID->uu, base, sizeof(base));
-
-	return pUUID;
-}
-
 /* 4 hex-number as argument, like FFFF */
 static void run_gatt_client_register_client(int argc, char **argv)
 {
 	char input[256];
-	unsigned long tmp;
-	uint8_t tab[2];
-	bt_uuid_t *UUID;
 	struct btt_gatt_client_register_client req;
 
 	sscanf(argv[1], "%s", input);
-	if (strlen(input) != 4) {
+
+	if (!sscanf_UUID(input, req.UUID.uu)) {
 		BTT_LOG_S("Error: Incorrect UUID\n");
 		return;
 	}
-
-	tmp = strtoul(input, NULL, 16);
-	tab[0] = (0x00FF & tmp);
-	tab[1] = ((0xFF00 & tmp) >> 8);
-
-	UUID = create_uuid(tab);
-	memcpy(&req.UUID, UUID, sizeof(bt_uuid_t));
-	free(UUID);
-	UUID = NULL;
 
 	process_request(BTT_GATT_CLIENT_REQ_REGISTER_CLIENT, &req);
 }
