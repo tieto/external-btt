@@ -32,6 +32,7 @@ enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_ADD_INCLUDED_SERVICE,
 	BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC,
 	BTT_GATT_SERVER_REQ_ADD_DESCRIPTOR,
+	BTT_GATT_SERVER_REQ_START_SERVICE,
 	BTT_GATT_SERVER_REQ_END
 };
 
@@ -42,6 +43,7 @@ enum btt_gatt_server_cb_t {
 	BTT_GATT_SERVER_CB_ADD_INCLUDED_SERVICE,
 	BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC,
 	BTT_GATT_SERVER_CB_ADD_DESCRIPTOR,
+	BTT_GATT_SERVER_CB_START_SERVICE,
 	BTT_GATT_SERVER_CB_END
 };
 
@@ -108,6 +110,14 @@ struct btt_gatt_server_add_descriptor {
 	int permissions;
 };
 
+struct btt_gatt_server_start_service {
+	struct btt_message hdr;
+
+	int server_if;
+	int service_handle;
+	int transport;
+};
+
 /* Structures for callbacks */
 
 struct btt_gatt_server_cb_hdr {
@@ -169,6 +179,14 @@ struct btt_gatt_server_cb_add_descriptor {
 	bt_uuid_t uuid;
 	int srvc_handle;
 	int descr_handle;
+};
+
+struct btt_gatt_server_cb_start_service {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int status;
+	int server_if;
+	int srvc_handle;
 };
 
 struct btt_gatt_server_cb_status {
