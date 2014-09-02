@@ -19,6 +19,7 @@
 #include "btt_utils.h"
 
 #define DEFAULT_TIME_SEC 3
+#define LONG_TIME_SEC 10
 #define MAX_ARGC 20
 
 static void run_gatt_client_help(int argc, char **argv);
@@ -78,7 +79,8 @@ void run_gatt_client_help(int argc, char **argv)
 	exit(EXIT_SUCCESS);
 }
 
-static void process_request(enum btt_gatt_client_req_t type, void *data)
+static void process_request(enum btt_gatt_client_req_t type, void *data,
+		unsigned int recv_time_sec)
 {
 	int server_sock;
 	bool wait_for_msg = TRUE;
@@ -96,7 +98,7 @@ static void process_request(enum btt_gatt_client_req_t type, void *data)
 	errno = 0;
 
 	server_sock = create_daemon_socket();
-	set_sock_rcv_time(DEFAULT_TIME_SEC, 0, server_sock);
+	set_sock_rcv_time(recv_time_sec, 0, server_sock);
 	if (!process_send_to_daemon(type, data, server_sock, &select_used))
 		return;
 
@@ -148,7 +150,7 @@ static void run_gatt_client_scan(int argc, char **argv)
 
 	sscanf(argv[1], "%d", &req.client_if);
 	req.start = 1;
-	process_request(BTT_GATT_CLIENT_REQ_SCAN, &req);
+	process_request(BTT_GATT_CLIENT_REQ_SCAN, &req, DEFAULT_TIME_SEC);
 }
 
 /* function return connected-socket file descriptor */
@@ -597,7 +599,8 @@ static void run_gatt_client_register_client(int argc, char **argv)
 		return;
 	}
 
-	process_request(BTT_GATT_CLIENT_REQ_REGISTER_CLIENT, &req);
+	process_request(BTT_GATT_CLIENT_REQ_REGISTER_CLIENT, &req,
+			DEFAULT_TIME_SEC);
 }
 
 static void run_gatt_client_un_register_client(int argc, char **argv)
@@ -605,7 +608,8 @@ static void run_gatt_client_un_register_client(int argc, char **argv)
 	struct btt_gatt_client_unregister_client req;
 
 	sscanf(argv[1], "%d", &req.client_if);
-	process_request(BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT, &req);
+	process_request(BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT, &req,
+			DEFAULT_TIME_SEC);
 }
 
 static void run_gatt_client_connect(int argc, char **argv)
@@ -621,7 +625,7 @@ static void run_gatt_client_connect(int argc, char **argv)
 
 	sscanf(argv[3], "%d", &req.is_direct);
 
-	process_request(BTT_GATT_CLIENT_REQ_CONNECT, &req);
+	process_request(BTT_GATT_CLIENT_REQ_CONNECT, &req, DEFAULT_TIME_SEC);
 }
 
 static void run_gatt_client_disconnect(int argc, char **argv)
@@ -637,7 +641,7 @@ static void run_gatt_client_disconnect(int argc, char **argv)
 
 	sscanf(argv[3], "%d", &req.conn_id);
 
-	process_request(BTT_GATT_CLIENT_REQ_DISCONNECT, &req);
+	process_request(BTT_GATT_CLIENT_REQ_DISCONNECT, &req, DEFAULT_TIME_SEC);
 }
 
 static void run_gatt_client_read_remote_rssi(int argc, char **argv)
@@ -650,7 +654,8 @@ static void run_gatt_client_read_remote_rssi(int argc, char **argv)
 	}
 
 	sscanf(argv[2], "%d", &req.client_if);
-	process_request(BTT_GATT_CLIENT_REQ_READ_REMOTE_RSSI, &req);
+	process_request(BTT_GATT_CLIENT_REQ_READ_REMOTE_RSSI, &req,
+			DEFAULT_TIME_SEC);
 }
 
 static void run_gatt_client_listen(int argc, char **argv)
@@ -659,7 +664,7 @@ static void run_gatt_client_listen(int argc, char **argv)
 
 	sscanf(argv[1], "%d", &req.client_if);
 	sscanf(argv[2], "%d", &req.start);
-	process_request(BTT_GATT_CLIENT_REQ_LISTEN, &req);
+	process_request(BTT_GATT_CLIENT_REQ_LISTEN, &req, DEFAULT_TIME_SEC);
 }
 
 static void run_gatt_client_set_adv_data_basic(int argc, char **argv)
@@ -677,7 +682,7 @@ static void run_gatt_client_set_adv_data_basic(int argc, char **argv)
 	req.service_data_len = 0;
 	req.manufacturer_len = 0;
 	req.service_uuid_len = 0;
-	process_request(BTT_GATT_CLIENT_REQ_SET_ADV_DATA, &req);
+	process_request(BTT_GATT_CLIENT_REQ_SET_ADV_DATA, &req, DEFAULT_TIME_SEC);
 }
 
 /* default settings of advertisement data taken:
@@ -719,7 +724,7 @@ static void run_gatt_client_set_adv_data(int argc, char **argv)
 	req.max_interval = 0;
 	req.set_scan_rsp = 1;
 
-	process_request(BTT_GATT_CLIENT_REQ_SET_ADV_DATA, &req);
+	process_request(BTT_GATT_CLIENT_REQ_SET_ADV_DATA, &req, DEFAULT_TIME_SEC);
 }
 
 static void run_gatt_client_get_device_type(int argc, char **argv)
@@ -731,7 +736,7 @@ static void run_gatt_client_get_device_type(int argc, char **argv)
 		return;
 	}
 
-	process_request(BTT_GATT_CLIENT_REQ_GET_DEVICE_TYPE, &req);
+	process_request(BTT_GATT_CLIENT_REQ_GET_DEVICE_TYPE, &req, DEFAULT_TIME_SEC);
 }
 
 static void run_gatt_client_refresh(int argc, char **argv)
@@ -745,5 +750,5 @@ static void run_gatt_client_refresh(int argc, char **argv)
 		return;
 	}
 
-	process_request(BTT_GATT_CLIENT_REQ_REFRESH, &req);
+	process_request(BTT_GATT_CLIENT_REQ_REFRESH, &req, DEFAULT_TIME_SEC);
 }
