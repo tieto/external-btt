@@ -435,7 +435,7 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		}
 
 		if (type == BTT_GATT_CLIENT_REQ_REGISTER_CLIENT) {
-			printf_UUID_128(cb.app_uuid.uu, FALSE);
+			printf_UUID_128(cb.app_uuid.uu, FALSE, FALSE);
 			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
 			BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
 		}
@@ -594,7 +594,7 @@ static void run_gatt_client_register_client(int argc, char **argv)
 
 	sscanf(argv[1], "%s", input);
 
-	if (!sscanf_UUID(input, req.UUID.uu)) {
+	if (!sscanf_UUID(input, req.UUID.uu, FALSE, FALSE)) {
 		BTT_LOG_S("Error: Incorrect UUID\n");
 		return;
 	}

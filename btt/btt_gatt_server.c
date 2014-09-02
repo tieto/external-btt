@@ -326,7 +326,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			if (type == BTT_GATT_SERVER_REQ_REGISTER_SERVER) {
 				BTT_LOG_S("\n");
-				printf_UUID_128(cb.app_uuid.uu, FALSE);
+				printf_UUID_128(cb.app_uuid.uu, FALSE, FALSE);
 				BTT_LOG_S("Status: %s\n",!cb.status ? "OK" : "ERROR");
 				BTT_LOG_S("Server interface: %d\n\n", cb.server_if);
 			}
@@ -368,7 +368,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 			if (type == BTT_GATT_SERVER_REQ_ADD_SERVICE) {
 				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
 				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				printf_UUID_128(cb.srvc_id.id.uuid.uu, FALSE);
+				printf_UUID_128(cb.srvc_id.id.uuid.uu, FALSE, FALSE);
 				BTT_LOG_S("Instance ID: %d\n", cb.srvc_id.id.inst_id);
 				BTT_LOG_S("Is Primary: %s\n", (cb.srvc_id.is_primary) ?
 						"True" : "False");
@@ -411,7 +411,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 			if (type == BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC) {
 				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
 				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				printf_UUID_128(cb.uuid.uu, FALSE);
+				printf_UUID_128(cb.uuid.uu, FALSE, FALSE);
 				BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
 				BTT_LOG_S("Characteristic Handle: %d\n\n", cb.char_handle);
 			}
@@ -431,7 +431,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 			if (type == BTT_GATT_SERVER_REQ_ADD_DESCRIPTOR) {
 				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
 				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				printf_UUID_128(cb.uuid.uu, FALSE);
+				printf_UUID_128(cb.uuid.uu, FALSE, FALSE);
 				BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
 				BTT_LOG_S("Descriptor Handle: %d\n\n", cb.descr_handle);
 			}
@@ -512,7 +512,7 @@ static void run_gatt_server_reg(int argc, char **argv)
 {
 	struct btt_gatt_server_reg req;
 
-	if (!sscanf_UUID(argv[1], req.UUID.uu)) {
+	if (!sscanf_UUID(argv[1], req.UUID.uu, FALSE, FALSE)) {
 			BTT_LOG_S("Error: Incorrect UUID\n");
 			return;
 	}
@@ -567,7 +567,7 @@ static void run_gatt_server_add_service(int argc, char **argv)
 
 	sscanf(argv[1], "%d", &req.server_if);
 
-	if (!sscanf_UUID(argv[2], req.srvc_id.id.uuid.uu)) {
+	if (!sscanf_UUID(argv[2], req.srvc_id.id.uuid.uu, FALSE, FALSE)) {
 			BTT_LOG_S("Error: Incorrect UUID\n");
 			return;
 	}
@@ -598,7 +598,7 @@ static void run_gatt_server_add_characteristic(int argc, char **argv)
 	sscanf(argv[1], "%d", &req.server_if);
 	sscanf(argv[2], "%d", &req.service_handle);
 
-	if (!sscanf_UUID(argv[3], req.uuid.uu)) {
+	if (!sscanf_UUID(argv[3], req.uuid.uu, FALSE, FALSE)) {
 			BTT_LOG_S("Error: Incorrect UUID\n");
 			return;
 	}
@@ -616,7 +616,7 @@ static void run_gatt_server_add_descriptor(int argc, char **argv)
 	sscanf(argv[1], "%d", &req.server_if);
 	sscanf(argv[2], "%d", &req.service_handle);
 
-	if (!sscanf_UUID(argv[3], req.uuid.uu)) {
+	if (!sscanf_UUID(argv[3], req.uuid.uu, FALSE, FALSE)) {
 			BTT_LOG_S("Error: Incorrect UUID\n");
 			return;
 	}
