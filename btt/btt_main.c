@@ -109,6 +109,7 @@ static void run_help(int argc, char **argv)
 		"\t""Wenjie Gong            <wenjie.gong@tieto.com>\n"
 		"\t""Tianxiang Mi           <tianxiang.mi@tieto.com>\n"
 		"\t""Aleksander Drewnicki   <ext.aleksander.drewnicki@tieto.com>\n"
+		"\t""Wojciech Wojciechowski <ext.wojciech.wojciechowski@tieto.com>\n"
 		"\n", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE);
 
 	print_commands(commands, UI_SUPPORTED_COMMANDS);
