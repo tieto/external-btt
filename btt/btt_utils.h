@@ -47,9 +47,14 @@ extern struct list_element *list_append(struct list_element *list,void *data);
 struct list_element *list_clear(struct list_element *list,
 		void (*data_destroy)(void *));
 extern bool sscanf_bdaddr(char *src, uint8_t *dest);
+extern void byte_swap(uint8_t *src, uint8_t *dest);
+extern void invert_hex_UUID(uint8_t *src, uint8_t *dest, bool swap_bytes);
 extern int string_to_hex(char *src, uint8_t *dest);
-extern bool sscanf_UUID(char *src, uint8_t *dest);
-extern void printf_UUID_128(uint8_t *src, bool invert);
+extern bool sscanf_UUID(char *src, uint8_t *dest, bool invert,
+		bool swap_bytes);
+extern void printf_UUID_128(uint8_t *src, bool invert, bool swap_bytes);
+extern bool sscanf_UUID_128(char *src, uint8_t *dest, bool invert,
+		bool swap_bytes);
 
 /* return FALSE if length of received structure is different
  * from expected length */

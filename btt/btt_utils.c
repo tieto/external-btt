@@ -461,7 +461,34 @@ bool sscanf_bdaddr(char *src, uint8_t *dest)
 	return FALSE;
 }
 
-bool sscanf_UUID(char *src, uint8_t *dest)
+/* swap hex digits in one byte, like 0x1A -> 0xA1 */
+void byte_swap(uint8_t *src, uint8_t *dest)
+{
+	*dest = (((*src) & 0x0F) << 4);
+	*dest += (((*src) & 0xF0) >> 4);
+}
+
+/* inverting UUID in hex array */
+void invert_hex_UUID(uint8_t *src, uint8_t *dest, bool swap_bytes)
+{
+	unsigned int i, ulen = sizeof(bt_uuid_t);
+	uint8_t tmp;
+
+	memcpy(dest, src, ulen);
+
+	for (i = 0; i < ulen / 2; i++) {
+		tmp = dest[i];
+		dest[i] = dest[(ulen - 1) - i];
+		dest[(ulen - 1) - i] = tmp;
+
+		if (swap_bytes) {
+			byte_swap(&dest[i], &dest[i]);
+			byte_swap(&dest[(ulen - 1) - i], &dest[(ulen - 1) - i]);
+		}
+	}
+}
+
+bool sscanf_UUID(char *src, uint8_t *dest, bool invert, bool swap_bytes)
 {
 	uint8_t tab[2];
 	char *checkString = NULL;
@@ -480,12 +507,47 @@ bool sscanf_UUID(char *src, uint8_t *dest)
 	bt_uuid[2] = tab[0];
 	bt_uuid[3] = tab[1];
 
-	memcpy(dest, bt_uuid, sizeof(bt_uuid));
+	if (invert)
+		invert_hex_UUID(bt_uuid, dest, swap_bytes);
+	else
+		memcpy(dest, bt_uuid, sizeof(bt_uuid));
 
 	return TRUE;
 }
 
-void printf_UUID_128(uint8_t *src, bool invert)
+/* source array should have form like:
+ * 00000000-FFFF-0000-FFFF-000000000000 */
+bool sscanf_UUID_128(char *src, uint8_t *dest, bool invert, bool swap_bytes)
+{
+	/* UUID's string length: 32 * hex digit + 4 * '-' */
+	unsigned int i, j = 0, UUID_slen = 36;
+	char clear_UUID[UUID_slen - 3];
+
+	if (strlen(src) != UUID_slen)
+		return FALSE;
+
+	for (i = 0; i < strlen(src); i++) {
+		if(!isxdigit(src[i]) && src[i] != '-')
+			return FALSE;
+
+		if (src[i] != '-') {
+			clear_UUID[j] = src[i];
+			++j;
+		}
+	}
+
+	clear_UUID[UUID_slen - 4] = '\0';
+
+	if (!string_to_hex(clear_UUID, dest))
+		return FALSE;
+
+	if (invert)
+		invert_hex_UUID(dest, dest, swap_bytes);
+
+	return TRUE;
+}
+
+void printf_UUID_128(uint8_t *src, bool invert, bool swap_bytes)
 {
 	unsigned int i, ulen = sizeof(bt_uuid_t);
 	uint8_t tmp;
@@ -494,11 +556,7 @@ void printf_UUID_128(uint8_t *src, bool invert)
 
 	/* inverting source array */
 	if (invert)
-		for (i = 0; i < ulen / 2; i++) {
-			tmp = src[i];
-			src[i] = src[(ulen - 1) - i];
-			src[(ulen - 1) - i] = tmp;
-		}
+		invert_hex_UUID(src, src, swap_bytes);
 
 	for (i = 0; i < ulen; i++) {
 		BTT_LOG_S("%.2X", src[i]);
