@@ -30,6 +30,7 @@ static void run_gatt_server_add_included_service(int argc, char **argv);
 static void run_gatt_server_add_characteristic(int argc, char **argv);
 static void run_gatt_server_add_descriptor(int argc, char **argv);
 static void run_gatt_server_start_service(int argc, char **argv);
+static void run_gatt_server_stop_service(int argc, char **argv);
 
 static const struct extended_command gatt_server_commands[] = {
 		{{ "help",						"",									run_gatt_server_help}, 1, MAX_ARGC},
@@ -47,7 +48,7 @@ static const struct extended_command gatt_server_commands[] = {
 				run_gatt_server_add_descriptor}, 5, 5},
 		{{ "start_service",				"<server_if><servcie_handle><transport>",
 				run_gatt_server_start_service}, 4, 4},
-		{{ "stop_service",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
+		{{ "stop_service",				"<server_if><service_handle>",		run_gatt_server_stop_service}, 3, 3},
 		{{ "delete_service",			"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
 		{{ "send_indication",			"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
 		{{ "send_response",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1}
@@ -245,6 +246,23 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		break;
 	}
+	case BTT_GATT_SERVER_REQ_STOP_SERVICE:
+	{
+		struct btt_gatt_server_stop_service *stop_service =
+				(struct btt_gatt_server_stop_service*) data;
+
+		stop_service->hdr.command = BTT_GATT_SERVER_CMD_STOP_SERVICE;
+		stop_service->hdr.length = sizeof(struct btt_gatt_server_stop_service)
+						- sizeof(struct btt_message);
+
+		if (send(server_sock, stop_service,
+				sizeof(struct btt_gatt_server_stop_service), 0) == -1) {
+			close(server_sock);
+			return;
+		}
+
+		break;
+	}
 	default:
 		break;
 	}
@@ -421,6 +439,25 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			return;
 		}
+		case BTT_GATT_SERVER_CB_STOP_SERVICE:
+		{
+			struct btt_gatt_server_cb_stop_service cb;
+
+			memset(&cb,0,sizeof(cb));
+
+			if (!RECV(&cb,server_sock)) {
+				BTT_LOG_S("Error: incorrect size of received structure.\n");
+				return;
+			}
+
+			if(type == BTT_GATT_SERVER_REQ_STOP_SERVICE) {
+				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+				BTT_LOG_S("Server interface: %d\n", cb.server_if);
+				BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
+			}
+
+			return;
+		}
 		default:
 			buffer = malloc(btt_cb.length);
 
@@ -561,6 +598,16 @@ static void run_gatt_server_start_service(int argc, char **argv)
 	sscanf(argv[3], "%d", &req.transport);
 
 	process_request(BTT_GATT_SERVER_REQ_START_SERVICE, &req);
+}
+
+static void run_gatt_server_stop_service(int argc, char **argv)
+{
+	struct btt_gatt_server_stop_service req;
+
+	sscanf(argv[1], "%d", &req.server_if);
+	sscanf(argv[2], "%d", &req.service_handle);
+
+	process_request(BTT_GATT_SERVER_REQ_STOP_SERVICE, &req);
 }
 
 void run_gatt_server(int argc, char **argv)

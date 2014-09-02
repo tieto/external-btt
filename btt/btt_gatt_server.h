@@ -33,6 +33,7 @@ enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC,
 	BTT_GATT_SERVER_REQ_ADD_DESCRIPTOR,
 	BTT_GATT_SERVER_REQ_START_SERVICE,
+	BTT_GATT_SERVER_REQ_STOP_SERVICE,
 	BTT_GATT_SERVER_REQ_END
 };
 
@@ -44,6 +45,7 @@ enum btt_gatt_server_cb_t {
 	BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC,
 	BTT_GATT_SERVER_CB_ADD_DESCRIPTOR,
 	BTT_GATT_SERVER_CB_START_SERVICE,
+	BTT_GATT_SERVER_CB_STOP_SERVICE,
 	BTT_GATT_SERVER_CB_END
 };
 
@@ -118,6 +120,13 @@ struct btt_gatt_server_start_service {
 	int transport;
 };
 
+struct btt_gatt_server_stop_service {
+	struct btt_message hdr;
+
+	int server_if;
+	int service_handle;
+};
+
 /* Structures for callbacks */
 
 struct btt_gatt_server_cb_hdr {
@@ -182,6 +191,14 @@ struct btt_gatt_server_cb_add_descriptor {
 };
 
 struct btt_gatt_server_cb_start_service {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int status;
+	int server_if;
+	int srvc_handle;
+};
+
+struct btt_gatt_server_cb_stop_service {
 	struct btt_gatt_server_cb_hdr hdr;
 
 	int status;
