@@ -631,6 +631,7 @@ static bool process_stdin(bool *select_used, int client_if)
 	if (!strncmp(buf, "stop", 4)) {
 		server_sock = create_daemon_socket();
 		tmp.start = 0;
+		tmp.client_if = client_if;
 
 		if (process_send_to_daemon(BTT_GATT_CLIENT_REQ_SCAN, &tmp,
 				server_sock, select_used)) {
