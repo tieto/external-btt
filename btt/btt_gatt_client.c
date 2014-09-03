@@ -236,7 +236,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 						- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, register_client,
-				sizeof(struct btt_gatt_client_register_client), 0) == -1)
+				sizeof(struct btt_gatt_client_register_client), 0))
 			return FALSE;
 
 		break;
@@ -251,7 +251,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, unregister_client,
-				sizeof(struct btt_gatt_client_unregister_client), 0) == -1)
+				sizeof(struct btt_gatt_client_unregister_client), 0))
 			return FALSE;
 
 		break;
@@ -266,7 +266,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, connect,
-				sizeof(struct btt_gatt_client_connect), 0) == -1)
+				sizeof(struct btt_gatt_client_connect), 0))
 			return FALSE;
 
 		break;
@@ -281,7 +281,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, disconnect,
-				sizeof(struct btt_gatt_client_disconnect), 0) == -1)
+				sizeof(struct btt_gatt_client_disconnect), 0))
 			return FALSE;
 
 		break;
@@ -296,7 +296,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, read_rssi,
-				sizeof(struct btt_gatt_client_read_remote_rssi), 0) == -1)
+				sizeof(struct btt_gatt_client_read_remote_rssi), 0))
 			return FALSE;
 
 		break;
@@ -311,7 +311,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, listen,
-				sizeof(struct btt_gatt_client_listen), 0) == -1)
+				sizeof(struct btt_gatt_client_listen), 0))
 			return FALSE;
 
 		break;
@@ -326,7 +326,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, adv,
-				sizeof(struct btt_gatt_client_set_adv_data), 0) == -1)
+				sizeof(struct btt_gatt_client_set_adv_data), 0))
 			return FALSE;
 
 		break;
@@ -341,7 +341,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, get,
-				sizeof(struct btt_gatt_client_listen), 0) == -1)
+				sizeof(struct btt_gatt_client_listen), 0))
 			return FALSE;
 
 		break;
@@ -356,7 +356,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, refresh,
-				sizeof(struct btt_gatt_client_refresh), 0) == -1)
+				sizeof(struct btt_gatt_client_refresh), 0))
 			return FALSE;
 
 		break;
@@ -371,7 +371,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 				- sizeof(struct btt_message);
 
 		if (!send_by_socket(server_sock, search,
-				sizeof(struct btt_gatt_client_search_service), 0) == -1)
+				sizeof(struct btt_gatt_client_search_service), 0))
 			return FALSE;
 
 		break;
