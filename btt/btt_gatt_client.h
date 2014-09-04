@@ -148,6 +148,15 @@ struct btt_gatt_client_get_included_service {
 	int is_start;
 };
 
+struct btt_gatt_client_get_characteristic {
+	struct btt_message hdr;
+
+	int conn_id;
+	btgatt_srvc_id_t srvc_id;
+	btgatt_gatt_id_t start_char_id;
+	int is_start;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
@@ -273,6 +282,25 @@ struct btt_gatt_client_cb_get_included_service {
 	int status;
 	btgatt_srvc_id_t srvc_id;
 	btgatt_srvc_id_t incl_srvc_id;
+};
+
+#define GATT_CHAR_PROP_BIT_BROADCAST (1 << 0)
+#define GATT_CHAR_PROP_BIT_READ (1 << 1)
+#define GATT_CHAR_PROP_BIT_WRITE_NR (1 << 2)
+#define GATT_CHAR_PROP_BIT_WRITE (1 << 3)
+#define GATT_CHAR_PROP_BIT_NOTIFY (1 << 4)
+#define GATT_CHAR_PROP_BIT_INDICATE (1 << 5)
+#define GATT_CHAR_PROP_BIT_AUTH (1 << 6)
+#define GATT_CHAR_PROP_BIT_EXT_PROP (1 << 7)
+
+struct btt_gatt_client_cb_get_characteristic {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int conn_id;
+	int status;
+	btgatt_srvc_id_t srvc_id;
+	btgatt_gatt_id_t char_id;
+	int char_prop;
 };
 
 extern void run_gatt_client(int argc, char **argv);
