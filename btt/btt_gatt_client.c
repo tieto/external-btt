@@ -35,6 +35,7 @@ static void run_gatt_client_set_adv_data(int argc, char **argv);
 static void run_gatt_client_get_device_type(int argc, char **argv);
 static void run_gatt_client_refresh(int argc, char **argv);
 static void run_gatt_client_search_service(int argc, char **argv);
+static void run_gatt_client_get_included_service(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -58,7 +59,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "listen",						"<client_if> <start>", run_gatt_client_listen}, 3, 3},
 		{{ "refresh",						"<client_if> <BD_ADDR>", run_gatt_client_refresh}, 3, 3},
 		{{ "search_service",				"<conn_id> [16bit_UUID_filter | 128bit_UUID_filter]", run_gatt_client_search_service}, 2, 3},
-		{{ "get_included_service",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "get_included_service",			"<conn_id> <16bit_UUID | 128bit_UUID> <is_primary> <inst_id> [<16bit_UUID | 128bit_UUID> <is_primary> <inst_id>]", run_gatt_client_get_included_service}, 5, 8},
 		{{ "get_charakteristic",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "get_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "read_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -376,6 +377,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_GET_INCLUDED_SERVICE:
+	{
+		struct btt_gatt_client_get_included_service *get;
+
+		get = (struct btt_gatt_client_get_included_service *) data;
+		get->hdr.command = BTT_CMD_GATT_CLIENT_GET_INCLUDE_SERVICE;
+		get->hdr.length = sizeof(struct btt_gatt_client_get_included_service)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, get,
+				sizeof(struct btt_gatt_client_get_included_service), 0))
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -598,6 +614,31 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		if (type == BTT_GATT_CLIENT_REQ_SEARCH_SERVICE) {
 			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
 			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
+	case BTT_GATT_CLIENT_CB_GET_INCLUDED_SERVICE:
+	{
+		struct btt_gatt_client_cb_get_included_service cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_GET_INCLUDED_SERVICE) {
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+
+			if (!cb.status) {
+				BTT_LOG_S("SERVICE: \n");
+				printf_service(cb.srvc_id);
+				BTT_LOG_S("\nINCLUDED SERVICE: \n");
+				printf_service(cb.incl_srvc_id);
+				BTT_LOG_S("\n");
+			}
 		}
 
 		*wait_for_msg = FALSE;
@@ -853,4 +894,41 @@ static void run_gatt_client_search_service(int argc, char **argv)
 	}
 
 	process_request(BTT_GATT_CLIENT_REQ_SEARCH_SERVICE, &req, LONG_TIME_SEC);
+}
+
+static void run_gatt_client_get_included_service(int argc, char **argv)
+{
+	struct btt_gatt_client_get_included_service req;
+	char input[256];
+
+	if (argc == 5) {
+		req.is_start = 0;
+	} else if (argc == 8) {
+		req.is_start = 1;
+	} else {
+		BTT_LOG_S("Error: Incorrect number of arguments\n");
+		return;
+	}
+
+	sscanf(argv[1], "%d", &req.conn_id);
+	sscanf(argv[2], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.srvc_id.id.uuid.uu))
+		return;
+
+	sscanf(argv[3], "%"SCNd8"", &req.srvc_id.is_primary);
+	sscanf(argv[4], "%"SCNd8"", &req.srvc_id.id.inst_id);
+
+	if (req.is_start) {
+		sscanf(argv[5], "%s", input);
+
+		if (!process_UUID_sscanf(input, req.start_incl_srvc_id.id.uuid.uu))
+			return;
+
+		sscanf(argv[6], "%"SCNd8, &req.start_incl_srvc_id.is_primary);
+		sscanf(argv[7], "%"SCNd8, &req.start_incl_srvc_id.id.inst_id);
+	}
+
+	process_request(BTT_GATT_CLIENT_REQ_GET_INCLUDED_SERVICE, &req,
+			DEFAULT_TIME_SEC);
 }

@@ -199,6 +199,25 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_GET_INCLUDE_SERVICE:
+	{
+		struct btt_gatt_client_get_included_service msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		if (!msg.is_start)
+			status = gatt_client_if->get_included_service(msg.conn_id,
+					&msg.srvc_id, NULL);
+		else
+			status = gatt_client_if->get_included_service(msg.conn_id,
+					&msg.srvc_id, &msg.start_incl_srvc_id);
+
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
@@ -459,8 +478,21 @@ static void get_descriptor_cb(int conn_id, int status, btgatt_srvc_id_t
 static void get_included_service_cb(int conn_id, int status,
 		btgatt_srvc_id_t *srvc_id, btgatt_srvc_id_t *incl_srvc_id)
 {
+	struct btt_gatt_client_cb_get_included_service btt_cb;
+
 	BTT_LOG_D("Callback_GC Get Included Service");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_GET_INCLUDED_SERVICE;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_get_included_service)
+			- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.srvc_id = *srvc_id;
+	btt_cb.incl_srvc_id = *incl_srvc_id;
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_client_cb_get_included_service), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static void register_for_notification_cb(int conn_id, int registered,
