@@ -116,7 +116,7 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 				msg.included_handle);
 		break;
 	}
-	case BTT_GATT_SERVER_CMD_ADD_CHARAKTERISTIC:
+	case BTT_GATT_SERVER_CMD_ADD_CHARACTERISTIC:
 	{
 		struct btt_gatt_server_add_characteristic msg;
 
