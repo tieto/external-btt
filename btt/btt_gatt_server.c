@@ -201,7 +201,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		struct btt_gatt_server_add_characteristic *add_characteristic =
 				(struct btt_gatt_server_add_characteristic*) data;
 
-		add_characteristic->hdr.command = BTT_GATT_SERVER_CMD_ADD_CHARAKTERISTIC;
+		add_characteristic->hdr.command = BTT_GATT_SERVER_CMD_ADD_CHARACTERISTIC;
 		add_characteristic->hdr.length = sizeof(struct btt_gatt_server_add_characteristic)
 						- sizeof(struct btt_message);
 
