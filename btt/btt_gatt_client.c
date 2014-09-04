@@ -36,6 +36,7 @@ static void run_gatt_client_get_device_type(int argc, char **argv);
 static void run_gatt_client_refresh(int argc, char **argv);
 static void run_gatt_client_search_service(int argc, char **argv);
 static void run_gatt_client_get_included_service(int argc, char **argv);
+static void run_gatt_client_get_characteristic(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -47,6 +48,7 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		bool *wait_for_msg, int server_sock);
 static bool process_stdin(bool *select_used, int client_if);
 static void printf_service(btgatt_srvc_id_t srv);
+static void printf_characteristic(btgatt_gatt_id_t cha, int char_prop);
 static bool process_UUID_sscanf(char *src, uint8_t *dest);
 
 static const struct extended_command gatt_client_commands[] = {
@@ -60,7 +62,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "refresh",						"<client_if> <BD_ADDR>", run_gatt_client_refresh}, 3, 3},
 		{{ "search_service",				"<conn_id> [16bit_UUID_filter | 128bit_UUID_filter]", run_gatt_client_search_service}, 2, 3},
 		{{ "get_included_service",			"<conn_id> <16bit_UUID | 128bit_UUID> <is_primary> <inst_id> [<16bit_UUID | 128bit_UUID> <is_primary> <inst_id>]", run_gatt_client_get_included_service}, 5, 8},
-		{{ "get_characteristic",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "get_characteristic",			"<conn_id> <16bit_UUID | 128bit_UUID> <is_primary> <inst_id> [<16bit_UUID | 128bit_UUID> <inst_id>]", run_gatt_client_get_characteristic}, 5, 7},
 		{{ "get_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "read_characteristic",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "write_characteristic",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -394,6 +396,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_GET_CHARACTERISTIC:
+	{
+		struct btt_gatt_client_get_characteristic *get;
+
+		get = (struct btt_gatt_client_get_characteristic *) data;
+		get->hdr.command = BTT_CMD_GATT_CLIENT_GET_CHARACTERISTIC;
+		get->hdr.length = sizeof(struct btt_gatt_client_get_characteristic)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, get,
+				sizeof(struct btt_gatt_client_get_characteristic), 0))
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -646,6 +663,30 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		*wait_for_msg = FALSE;
 		return TRUE;
 	}
+	case BTT_GATT_CLIENT_CB_GET_CHARACTERISTIC:
+	{
+		struct btt_gatt_client_cb_get_characteristic cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_GET_CHARACTERISTIC) {
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+
+			if (!cb.status) {
+				BTT_LOG_S("SERVICE: \n");
+				printf_service(cb.srvc_id);
+				BTT_LOG_S("\nCHARACTERISTIC: \n");
+				printf_characteristic(cb.char_id, cb.char_prop);
+			}
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
 	default:
 		*wait_for_msg = FALSE;
 		break;
@@ -660,6 +701,38 @@ static void printf_service(btgatt_srvc_id_t srv)
 			"primary" : "secondary"));
 	BTT_LOG_S("Instance Id: %d.\n", srv.id.inst_id);
 	printf_UUID_128(srv.id.uuid.uu, TRUE, FALSE);
+}
+
+static void printf_characteristic(btgatt_gatt_id_t cha, int char_prop)
+{
+	BTT_LOG_S("Instance Id: %d.\n", cha.inst_id);
+	printf_UUID_128(cha.uuid.uu, TRUE, FALSE);
+	BTT_LOG_S("\nBit set: \n");
+
+	if (char_prop & GATT_CHAR_PROP_BIT_BROADCAST)
+		BTT_LOG_S("\tBroadcast\n");
+
+	if (char_prop & GATT_CHAR_PROP_BIT_READ)
+		BTT_LOG_S("\tRead\n");
+
+	if (char_prop & GATT_CHAR_PROP_BIT_WRITE_NR)
+		BTT_LOG_S("\tWrite without Response\n");
+
+	if (char_prop & GATT_CHAR_PROP_BIT_WRITE)
+		BTT_LOG_S("\tWrite\n");
+
+	if (char_prop & GATT_CHAR_PROP_BIT_NOTIFY)
+		BTT_LOG_S("\tNotify\n");
+
+	if (char_prop & GATT_CHAR_PROP_BIT_INDICATE)
+		BTT_LOG_S("\tIndicate\n");
+
+	if (char_prop & GATT_CHAR_PROP_BIT_AUTH)
+		BTT_LOG_S("\tSigned Write\n");
+
+	if (char_prop & GATT_CHAR_PROP_BIT_EXT_PROP)
+		BTT_LOG_S("\tExtended properties\n");
+
 }
 
 /* presently used only by scan */
@@ -932,5 +1005,41 @@ static void run_gatt_client_get_included_service(int argc, char **argv)
 	}
 
 	process_request(BTT_GATT_CLIENT_REQ_GET_INCLUDED_SERVICE, &req,
+			DEFAULT_TIME_SEC);
+}
+
+static void run_gatt_client_get_characteristic(int argc, char **argv)
+{
+	struct btt_gatt_client_get_characteristic req;
+	char input[256];
+
+	if (argc == 5) {
+		req.is_start = 0;
+	} else if (argc == 7) {
+		req.is_start = 1;
+	} else {
+		BTT_LOG_S("Error: Incorrect number of arguments\n");
+		return;
+	}
+
+	sscanf(argv[1], "%d", &req.conn_id);
+	sscanf(argv[2], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.srvc_id.id.uuid.uu))
+		return;
+
+	sscanf(argv[3], "%"SCNd8"", &req.srvc_id.is_primary);
+	sscanf(argv[4], "%"SCNd8"", &req.srvc_id.id.inst_id);
+
+	if (req.is_start) {
+		sscanf(argv[5], "%s", input);
+
+		if (!process_UUID_sscanf(input, req.start_char_id.uuid.uu))
+			return;
+
+		sscanf(argv[6], "%"SCNd8"", &req.start_char_id.inst_id);
+	}
+
+	process_request(BTT_GATT_CLIENT_REQ_GET_CHARACTERISTIC, &req,
 			DEFAULT_TIME_SEC);
 }
