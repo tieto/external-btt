@@ -707,7 +707,9 @@ static void printf_characteristic(btgatt_gatt_id_t cha, int char_prop)
 {
 	BTT_LOG_S("Instance Id: %d.\n", cha.inst_id);
 	printf_UUID_128(cha.uuid.uu, TRUE, FALSE);
-	BTT_LOG_S("\nBit set: \n");
+
+	if (char_prop != 0)
+		BTT_LOG_S("\nBit set: \n");
 
 	if (char_prop & GATT_CHAR_PROP_BIT_BROADCAST)
 		BTT_LOG_S("\tBroadcast\n");
