@@ -37,6 +37,7 @@ static void run_gatt_client_refresh(int argc, char **argv);
 static void run_gatt_client_search_service(int argc, char **argv);
 static void run_gatt_client_get_included_service(int argc, char **argv);
 static void run_gatt_client_get_characteristic(int argc, char **argv);
+static void run_gatt_client_get_descriptor(int argc, char **argv);
 
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
@@ -63,7 +64,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "search_service",				"<conn_id> [16bit_UUID_filter | 128bit_UUID_filter]", run_gatt_client_search_service}, 2, 3},
 		{{ "get_included_service",			"<conn_id> <16bit_UUID | 128bit_UUID> <is_primary> <inst_id> [<16bit_UUID | 128bit_UUID> <is_primary> <inst_id>]", run_gatt_client_get_included_service}, 5, 8},
 		{{ "get_characteristic",			"<conn_id> <16bit_UUID | 128bit_UUID> <is_primary> <inst_id> [<16bit_UUID | 128bit_UUID> <inst_id>]", run_gatt_client_get_characteristic}, 5, 7},
-		{{ "get_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "get_descriptor",				"<conn_id> <16bit_UUID | 128bit_UUID> <is_primary> <inst_id> <16bit_UUID | 128bit_UUID> <inst_id> [<16bit_UUID | 128bit_UUID> <inst_id>]", run_gatt_client_get_descriptor}, 7, 9},
 		{{ "read_characteristic",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "write_characteristic",			"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "read_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -411,6 +412,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_GET_DESCRIPTOR:
+	{
+		struct btt_gatt_client_get_descriptor *get;
+
+		get = (struct btt_gatt_client_get_descriptor *) data;
+		get->hdr.command = BTT_CMD_GATT_CLIENT_GET_DESCRIPTOR;
+		get->hdr.length = sizeof(struct btt_gatt_client_get_descriptor)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, get,
+				sizeof(struct btt_gatt_client_get_descriptor), 0))
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -681,6 +697,32 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 				printf_service(cb.srvc_id);
 				BTT_LOG_S("\nCHARACTERISTIC: \n");
 				printf_characteristic(cb.char_id, cb.char_prop);
+			}
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
+	case BTT_GATT_CLIENT_CB_GET_DESCRIPTOR:
+	{
+		struct btt_gatt_client_cb_get_descriptor cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_GET_DESCRIPTOR) {
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+
+			if (!cb.status) {
+				BTT_LOG_S("SERVICE: \n");
+				printf_service(cb.srvc_id);
+				BTT_LOG_S("\nCHARACTERISTIC: \n");
+				printf_characteristic(cb.char_id, 0);
+				BTT_LOG_S("\nDESCRIPTOR: \n");
+				printf_characteristic(cb.descr_id, 0);
 			}
 		}
 
@@ -1043,5 +1085,48 @@ static void run_gatt_client_get_characteristic(int argc, char **argv)
 	}
 
 	process_request(BTT_GATT_CLIENT_REQ_GET_CHARACTERISTIC, &req,
+			DEFAULT_TIME_SEC);
+}
+
+static void run_gatt_client_get_descriptor(int argc, char **argv)
+{
+	struct btt_gatt_client_get_descriptor req;
+	char input[256];
+
+	if (argc == 7) {
+		req.is_start = 0;
+	} else if (argc == 9) {
+		req.is_start = 1;
+	} else {
+		BTT_LOG_S("Error: Incorrect number of arguments\n");
+		return;
+	}
+
+	sscanf(argv[1], "%d", &req.conn_id);
+	sscanf(argv[2], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.srvc_id.id.uuid.uu))
+		return;
+
+	sscanf(argv[3], "%"SCNd8"", &req.srvc_id.is_primary);
+	sscanf(argv[4], "%"SCNd8"", &req.srvc_id.id.inst_id);
+
+	sscanf(argv[5], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.char_id.uuid.uu))
+		return;
+
+	sscanf(argv[6], "%"SCNd8"", &req.char_id.inst_id);
+
+	if (req.is_start) {
+		sscanf(argv[7], "%s", input);
+
+		if (!process_UUID_sscanf(input, req.start_descr_id.uuid.uu))
+			return;
+
+		sscanf(argv[8], "%"SCNd8"", &req.start_descr_id.inst_id);
+	}
+
+	process_request(BTT_GATT_CLIENT_REQ_GET_DESCRIPTOR, &req,
 			DEFAULT_TIME_SEC);
 }
