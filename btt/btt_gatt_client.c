@@ -688,7 +688,7 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		return TRUE;
 	}
 	default:
-		*wait_for_msg = FALSE;
+		*wait_for_msg = TRUE;
 		break;
 	}
 
