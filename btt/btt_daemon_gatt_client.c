@@ -256,6 +256,20 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_READ_CHARACTERISTIC:
+	{
+		struct btt_gatt_client_read_characteristic msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		status = gatt_client_if->read_characteristic(msg.conn_id,
+				&msg.srvc_id, &msg.char_id, msg.auth_req);
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
@@ -579,8 +593,21 @@ static void notify_cb(int conn_id, btgatt_notify_params_t *p_data)
 static void read_characteristic_cb(int conn_id, int status,
 		btgatt_read_params_t *p_data)
 {
+	struct btt_gatt_client_cb_read_characteristic btt_cb;
+
 	BTT_LOG_D("Callback_GC Read Charakteristic");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_READ_CHARACTERISTIC;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_read_characteristic)
+			- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.status = status;
+	btt_cb.p_data = *p_data;
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_client_cb_read_characteristic), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static void write_characteristic_cb(int conn_id, int status,
