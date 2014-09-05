@@ -157,6 +157,16 @@ struct btt_gatt_client_get_characteristic {
 	int is_start;
 };
 
+struct btt_gatt_client_get_descriptor {
+	struct btt_message hdr;
+
+	int conn_id;
+	btgatt_srvc_id_t srvc_id;
+	btgatt_gatt_id_t char_id;
+	btgatt_gatt_id_t start_descr_id;
+	int is_start;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
@@ -301,6 +311,16 @@ struct btt_gatt_client_cb_get_characteristic {
 	btgatt_srvc_id_t srvc_id;
 	btgatt_gatt_id_t char_id;
 	int char_prop;
+};
+
+struct btt_gatt_client_cb_get_descriptor {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int conn_id;
+	int status;
+	btgatt_srvc_id_t srvc_id;
+	btgatt_gatt_id_t char_id;
+	btgatt_gatt_id_t descr_id;
 };
 
 extern void run_gatt_client(int argc, char **argv);
