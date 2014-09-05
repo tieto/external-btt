@@ -22,6 +22,7 @@
 
 #include "btt.h"
 #include <hardware/bt_gatt_types.h>
+#include <hardware/bt_gatt_client.h>
 
 enum btt_gatt_client_req_t {
 	/*TODO: better number */
@@ -165,6 +166,15 @@ struct btt_gatt_client_get_descriptor {
 	btgatt_gatt_id_t char_id;
 	btgatt_gatt_id_t start_descr_id;
 	int is_start;
+};
+
+struct btt_gatt_client_read_characteristic {
+	struct btt_message hdr;
+
+	int conn_id;
+	btgatt_srvc_id_t srvc_id;
+	btgatt_gatt_id_t char_id;
+	int auth_req;
 };
 
 enum btt_gatt_client_cb_t {
@@ -321,6 +331,14 @@ struct btt_gatt_client_cb_get_descriptor {
 	btgatt_srvc_id_t srvc_id;
 	btgatt_gatt_id_t char_id;
 	btgatt_gatt_id_t descr_id;
+};
+
+struct btt_gatt_client_cb_read_characteristic {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int conn_id;
+	int status;
+	btgatt_read_params_t p_data;
 };
 
 extern void run_gatt_client(int argc, char **argv);
