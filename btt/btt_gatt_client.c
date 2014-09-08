@@ -42,6 +42,7 @@ static void run_gatt_client_read_characteristic(int argc, char **argv);
 static void run_gatt_client_read_descriptor(int argc, char **argv);
 static void run_gatt_client_write_characteristic(int argc, char **argv);
 static void run_gatt_client_execute_write(int argc, char **argv);
+static void run_gatt_client_write_descriptor(int argc, char **argv);
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
 		int server_sock);
@@ -71,7 +72,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "read_characteristic",			"<conn_id> <UUID> <is_primary> <inst_id> <UUID> <inst_id> <auth_req>", run_gatt_client_read_characteristic}, 8, 8},
 		{{ "write_characteristic",			"<conn_id> <UUID> <is_primary> <inst_id> <UUID> <inst_id> <write_type> <auth_req> <hex_value>", run_gatt_client_write_characteristic}, 10, 10},
 		{{ "read_descriptor",				"<conn_id> <UUID> <is_primary> <inst_id> <UUID> <inst_id> <UUID> <inst_id> <auth_req>", run_gatt_client_read_descriptor}, 10, 10},
-		{{ "write_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "write_descriptor",				"<conn_id> <UUID> <is_primary> <inst_id> <UUID> <inst_id> <UUID> <inst_id> <write_type> <auth_req> <hex_value>", run_gatt_client_write_descriptor}, 12, 12},
 		{{ "execute_write",					"<conn_id> <execute>", run_gatt_client_execute_write}, 3, 3},
 		{{ "register_for_notification",		"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "deregister_for_notification",	"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
@@ -490,6 +491,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_WRITE_DESCRIPTOR:
+	{
+		struct btt_gatt_client_write_descriptor *write;
+
+		write = (struct btt_gatt_client_write_descriptor *) data;
+		write->hdr.command = BTT_CMD_GATT_CLIENT_WRITE_DESCRIPTOR;
+		write->hdr.length = sizeof(struct btt_gatt_client_write_descriptor)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, write,
+				sizeof(struct btt_gatt_client_write_descriptor), 0))
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -893,6 +909,32 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		if (type == BTT_GATT_CLIENT_REQ_EXECUTE_WRITE) {
 			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
 			BTT_LOG_S("Connection Id: %d.\n\n", cb.conn_id);
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
+	case BTT_GATT_CLIENT_CB_WRITE_DESCRIPTOR:
+	{
+		struct btt_gatt_client_cb_write_descriptor cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_WRITE_DESCRIPTOR) {
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+
+			if (!cb.status) {
+				BTT_LOG_S("SERVICE: \n");
+				printf_service(cb.p_data.srvc_id);
+				BTT_LOG_S("\nCHARACTERISTIC: \n");
+				printf_characteristic(cb.p_data.char_id, 0);
+				BTT_LOG_S("\nDESCRIPTOR: \n");
+				printf_characteristic(cb.p_data.descr_id, 0);
+			}
 		}
 
 		*wait_for_msg = FALSE;
@@ -1409,5 +1451,48 @@ static void run_gatt_client_execute_write(int argc, char **argv)
 	sscanf(argv[2], "%d", &req.execute);
 
 	process_request(BTT_GATT_CLIENT_REQ_EXECUTE_WRITE, &req,
+			DEFAULT_TIME_SEC);
+}
+
+static void run_gatt_client_write_descriptor(int argc, char **argv)
+{
+	struct btt_gatt_client_write_descriptor req;
+	char input[256];
+
+	sscanf(argv[1], "%d", &req.conn_id);
+	sscanf(argv[2], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.srvc_id.id.uuid.uu))
+		return;
+
+	sscanf(argv[3], "%"SCNd8"", &req.srvc_id.is_primary);
+	sscanf(argv[4], "%"SCNd8"", &req.srvc_id.id.inst_id);
+	sscanf(argv[5], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.char_id.uuid.uu))
+		return;
+
+	sscanf(argv[6], "%"SCNd8"", &req.char_id.inst_id);
+	sscanf(argv[7], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.descr_id.uuid.uu))
+		return;
+
+	sscanf(argv[8], "%"SCNd8"", &req.descr_id.inst_id);
+	sscanf(argv[9], "%d", &req.write_type);
+	/* Types of auth_req:
+	 * 0 - NONE
+	 * 1 - ENCRIPTION
+	 * 2 - AUTHENTICATION (MITM) */
+	sscanf(argv[10], "%d", &req.auth_req);
+	sscanf(argv[11], "%s", input);
+	req.len = string_to_hex(input, (uint8_t *) &req.p_value);
+
+	if (req.len < 0) {
+		BTT_LOG_S("Error: Incorrect hex value.\n");
+		return;
+	}
+
+	process_request(BTT_GATT_CLIENT_REQ_WRITE_DESCRIPTOR, &req,
 			DEFAULT_TIME_SEC);
 }
