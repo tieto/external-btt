@@ -330,6 +330,34 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_REGISTER_FOR_NOTIFICATION:
+	{
+		struct btt_gatt_client_reg_for_notification msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		status = gatt_client_if->register_for_notification(msg.client_if,
+				&msg.addr, &msg.srvc_id, &msg.char_id);
+		break;
+	}
+	case BTT_CMD_GATT_CLIENT_DEREGISTER_FOR_NOTIFICATION:
+	{
+		struct btt_gatt_client_dereg_for_notification msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		status = gatt_client_if->deregister_for_notification(msg.client_if,
+				&msg.addr, &msg.srvc_id, &msg.char_id);
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
@@ -641,14 +669,41 @@ static void get_included_service_cb(int conn_id, int status,
 static void register_for_notification_cb(int conn_id, int registered,
 		int status, btgatt_srvc_id_t *srvc_id, btgatt_gatt_id_t *char_id)
 {
-	BTT_LOG_D("Callback_GC Register For Notification");
-	BTT_LOG_E("NOT IMPLEMENTED");
+	struct btt_gatt_client_cb_reg_for_notification btt_cb;
+
+	BTT_LOG_D("Callback_GC Get Register For Notification");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_REGISTER_FOR_NOTIFICATION;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_reg_for_notification)
+			- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.registered = registered;
+	btt_cb.status = status;
+	btt_cb.srvc_id = *srvc_id;
+	btt_cb.char_id = *char_id;
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_client_cb_reg_for_notification), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static void notify_cb(int conn_id, btgatt_notify_params_t *p_data)
 {
+	struct btt_gatt_client_cb_notify btt_cb;
+
 	BTT_LOG_D("Callback_GC Notify");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_NOTIFY;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_notify)
+			- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.p_data = *p_data;
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_client_cb_notify), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static void read_characteristic_cb(int conn_id, int status,

@@ -219,6 +219,24 @@ struct btt_gatt_client_write_descriptor {
 	char p_value[BTGATT_MAX_ATTR_LEN];
 };
 
+struct btt_gatt_client_reg_for_notification {
+	struct btt_message hdr;
+
+	int client_if;
+	bt_bdaddr_t addr;
+	btgatt_srvc_id_t srvc_id;
+	btgatt_gatt_id_t char_id;
+};
+
+struct btt_gatt_client_dereg_for_notification {
+	struct btt_message hdr;
+
+	int client_if;
+	bt_bdaddr_t addr;
+	btgatt_srvc_id_t srvc_id;
+	btgatt_gatt_id_t char_id;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
@@ -412,6 +430,23 @@ struct btt_gatt_client_cb_write_descriptor {
 	int conn_id;
 	int status;
 	btgatt_write_params_t p_data;
+};
+
+struct btt_gatt_client_cb_reg_for_notification {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int conn_id;
+	int registered;
+	int status;
+	btgatt_srvc_id_t srvc_id;
+	btgatt_gatt_id_t char_id;
+};
+
+struct btt_gatt_client_cb_notify {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int conn_id;
+	btgatt_notify_params_t p_data;
 };
 
 extern void run_gatt_client(int argc, char **argv);
