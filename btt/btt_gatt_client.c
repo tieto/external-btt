@@ -43,6 +43,8 @@ static void run_gatt_client_read_descriptor(int argc, char **argv);
 static void run_gatt_client_write_characteristic(int argc, char **argv);
 static void run_gatt_client_execute_write(int argc, char **argv);
 static void run_gatt_client_write_descriptor(int argc, char **argv);
+static void run_gatt_client_reg_for_notification(int argc, char **argv);
+static void run_gatt_client_dereg_for_notification(int argc, char **argv);
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
 		int server_sock);
@@ -74,8 +76,8 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "read_descriptor",				"<conn_id> <UUID> <is_primary> <inst_id> <UUID> <inst_id> <UUID> <inst_id> <auth_req>", run_gatt_client_read_descriptor}, 10, 10},
 		{{ "write_descriptor",				"<conn_id> <UUID> <is_primary> <inst_id> <UUID> <inst_id> <UUID> <inst_id> <write_type> <auth_req> <hex_value>", run_gatt_client_write_descriptor}, 12, 12},
 		{{ "execute_write",					"<conn_id> <execute>", run_gatt_client_execute_write}, 3, 3},
-		{{ "register_for_notification",		"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
-		{{ "deregister_for_notification",	"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "register_for_notification",		"<client_if> <BD_ADDR> <UUID> <is_primary> <inst_id> <UUID> <inst_id>", run_gatt_client_reg_for_notification}, 8, 8},
+		{{ "deregister_for_notification",	"<client_if> <BD_ADDR> <UUID> <is_primary> <inst_id> <UUID> <inst_id>", run_gatt_client_dereg_for_notification}, 8, 8},
 		{{ "read_remote_rssi",				"<BD_ADDR> <client_if>", run_gatt_client_read_remote_rssi}, 3, 3},
 		{{ "get_device_type",				"<BD_ADDR>", run_gatt_client_get_device_type}, 2, 2},
 		{{ "set_adv_data_basic",			"<client_if> <set_scan_rsp> <include_name> <include_txpower> <min_interval> <max_interval> <appearance>", run_gatt_client_set_adv_data_basic}, 8, 8},
@@ -502,6 +504,36 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		if (!send_by_socket(server_sock, write,
 				sizeof(struct btt_gatt_client_write_descriptor), 0))
+			return FALSE;
+
+		break;
+	}
+	case BTT_GATT_CLIENT_REQ_REGISTER_FOR_NOTIFICATION:
+	{
+		struct btt_gatt_client_reg_for_notification *reg;
+
+		reg = (struct btt_gatt_client_reg_for_notification *) data;
+		reg->hdr.command = BTT_CMD_GATT_CLIENT_REGISTER_FOR_NOTIFICATION;
+		reg->hdr.length = sizeof(struct btt_gatt_client_reg_for_notification)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, reg,
+				sizeof(struct btt_gatt_client_reg_for_notification), 0))
+			return FALSE;
+
+		break;
+	}
+	case BTT_GATT_CLIENT_REQ_DEREGISTER_FOR_NOTIFICATION:
+	{
+		struct btt_gatt_client_dereg_for_notification *dereg;
+
+		dereg = (struct btt_gatt_client_dereg_for_notification *) data;
+		dereg->hdr.command = BTT_CMD_GATT_CLIENT_DEREGISTER_FOR_NOTIFICATION;
+		dereg->hdr.length = sizeof(struct btt_gatt_client_dereg_for_notification)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, dereg,
+				sizeof(struct btt_gatt_client_dereg_for_notification), 0))
 			return FALSE;
 
 		break;
@@ -938,6 +970,58 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		}
 
 		*wait_for_msg = FALSE;
+		return TRUE;
+	}
+	case BTT_GATT_CLIENT_CB_REGISTER_FOR_NOTIFICATION:
+	{
+		struct btt_gatt_client_cb_reg_for_notification cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_REGISTER_FOR_NOTIFICATION || type
+				== BTT_GATT_CLIENT_REQ_DEREGISTER_FOR_NOTIFICATION) {
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+			BTT_LOG_S("Registered: %s\n", (!cb.registered) ? "TRUE" : "FALSE");
+
+			if (!cb.status) {
+				BTT_LOG_S("SERVICE: \n");
+				printf_service(cb.srvc_id);
+				BTT_LOG_S("\nCHARACTERISTIC: \n");
+				printf_characteristic(cb.char_id, 0);
+				BTT_LOG_S("\n");
+			}
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
+	case BTT_GATT_CLIENT_CB_NOTIFY:
+	{
+		struct btt_gatt_client_cb_notify cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		BTT_LOG_S("\nAddress: ");
+		print_bdaddr(cb.p_data.bda.address);
+		BTT_LOG_S("\nSERVICE: \n");
+		printf_service(cb.p_data.srvc_id);
+		BTT_LOG_S("\nCHARACTERISTIC: \n");
+		printf_characteristic(cb.p_data.char_id, 0);
+		BTT_LOG_S("Value: \n\t");
+
+		for (i = 0; i < cb.p_data.len; i++)
+			BTT_LOG_S("%.2X", cb.p_data.value[i]);
+
+		BTT_LOG_S("\nNotify: %s\n", (cb.p_data.is_notify) ? "TRUE" : "FALSE");
+		*wait_for_msg = TRUE;
 		return TRUE;
 	}
 	default:
@@ -1494,5 +1578,65 @@ static void run_gatt_client_write_descriptor(int argc, char **argv)
 	}
 
 	process_request(BTT_GATT_CLIENT_REQ_WRITE_DESCRIPTOR, &req,
+			DEFAULT_TIME_SEC);
+}
+
+static void run_gatt_client_reg_for_notification(int argc, char **argv)
+{
+	struct btt_gatt_client_reg_for_notification req;
+	char input[256];
+
+	sscanf(argv[1], "%d", &req.client_if);
+
+	if(!sscanf_bdaddr(argv[2], req.addr.address)) {
+		BTT_LOG_S("Error: Incorrect address\n");
+		return;
+	}
+
+	sscanf(argv[3], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.srvc_id.id.uuid.uu))
+		return;
+
+	sscanf(argv[4], "%"SCNd8"", &req.srvc_id.is_primary);
+	sscanf(argv[5], "%"SCNd8"", &req.srvc_id.id.inst_id);
+	sscanf(argv[6], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.char_id.uuid.uu))
+		return;
+
+	sscanf(argv[7], "%"SCNd8"", &req.char_id.inst_id);
+
+	process_request(BTT_GATT_CLIENT_REQ_REGISTER_FOR_NOTIFICATION, &req,
+			DEFAULT_TIME_SEC);
+}
+
+static void run_gatt_client_dereg_for_notification(int argc, char **argv)
+{
+	struct btt_gatt_client_dereg_for_notification req;
+	char input[256];
+
+	sscanf(argv[1], "%d", &req.client_if);
+
+	if(!sscanf_bdaddr(argv[2], req.addr.address)) {
+		BTT_LOG_S("Error: Incorrect address\n");
+		return;
+	}
+
+	sscanf(argv[3], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.srvc_id.id.uuid.uu))
+		return;
+
+	sscanf(argv[4], "%"SCNd8"", &req.srvc_id.is_primary);
+	sscanf(argv[5], "%"SCNd8"", &req.srvc_id.id.inst_id);
+	sscanf(argv[6], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.char_id.uuid.uu))
+		return;
+
+	sscanf(argv[7], "%"SCNd8"", &req.char_id.inst_id);
+
+	process_request(BTT_GATT_CLIENT_REQ_DEREGISTER_FOR_NOTIFICATION, &req,
 			DEFAULT_TIME_SEC);
 }
