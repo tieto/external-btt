@@ -92,8 +92,8 @@ static struct command commands[] = {
 		{ "help",    "", run_help    },
 		{ "daemon",  "", run_daemon  },
 		{ "adapter", "", run_adapter },
-		{ "gatt_client","", run_gatt_client },
-		{ "gatt_server", "", run_gatt_server }
+		{ "gattc","", run_gatt_client },
+		{ "gatts", "", run_gatt_server }
 };
 
 #define UI_SUPPORTED_COMMANDS sizeof(commands)/sizeof(struct command)
