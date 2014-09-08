@@ -314,6 +314,22 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		status = gatt_client_if->execute_write(msg.conn_id, msg.execute);
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_WRITE_DESCRIPTOR:
+	{
+		struct btt_gatt_client_write_descriptor msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		status = gatt_client_if->write_descriptor(msg.conn_id, &msg.srvc_id,
+				&msg.char_id, &msg.descr_id, msg.write_type, msg.len,
+				msg.auth_req, msg.p_value);
+
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
@@ -716,8 +732,21 @@ static void read_descriptor_cb(int conn_id, int status,
 static void write_descriptor_cb(int conn_id, int status,
 		btgatt_write_params_t *p_data)
 {
+	struct btt_gatt_client_cb_write_descriptor btt_cb;
+
 	BTT_LOG_D("Callback_GC Write Descriptor");
-	BTT_LOG_E("NOT IMPLEMENTED");
+
+	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_WRITE_DESCRIPTOR;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_write_descriptor)
+			- sizeof(struct btt_gatt_client_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.status = status;
+	btt_cb.p_data = *p_data;
+	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_client_cb_write_descriptor), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 static void read_remote_rssi_cb(int client_if, bt_bdaddr_t* bda,
