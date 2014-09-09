@@ -45,6 +45,7 @@ static void run_gatt_client_execute_write(int argc, char **argv);
 static void run_gatt_client_write_descriptor(int argc, char **argv);
 static void run_gatt_client_reg_for_notification(int argc, char **argv);
 static void run_gatt_client_dereg_for_notification(int argc, char **argv);
+static void run_gatt_client_test_command(int argc, char **argv);
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
 		int server_sock);
@@ -82,7 +83,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "get_device_type",				"<BD_ADDR>", run_gatt_client_get_device_type}, 2, 2},
 		{{ "set_adv_data_basic",			"<client_if> <set_scan_rsp> <include_name> <include_txpower> <min_interval> <max_interval> <appearance>", run_gatt_client_set_adv_data_basic}, 8, 8},
 		{{ "set_adv_data",					"<client_if> <manuf_data> <service_data> <service_uuid>", run_gatt_client_set_adv_data}, 5, 5},
-		{{ "test_command",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "test_command",					"<command> <BD_ADDR> <UUID> [u1] [u2] [u3] [u4] [u5]", run_gatt_client_test_command}, 4, 9},
 };
 
 #define GATT_CLIENT_SUPPORTED_COMMANDS sizeof(gatt_client_commands)/sizeof(struct extended_command)
@@ -538,6 +539,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_TEST_COMMAND:
+	{
+		struct btt_gatt_client_test_command *test;
+
+		test = (struct btt_gatt_client_test_command *) data;
+		test->hdr.command = BTT_CMD_GATT_CLIENT_TEST_COMMAND;
+		test->hdr.length = sizeof(struct btt_gatt_client_test_command)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, test,
+				sizeof(struct btt_gatt_client_test_command), 0))
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -581,7 +597,8 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		*wait_for_msg = (((stat.status != BT_STATUS_SUCCESS) || (type
 				== BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT) || (type
 						== BTT_GATT_CLIENT_REQ_SET_ADV_DATA) || (type
-								== BTT_GATT_CLIENT_REQ_REFRESH)) ?
+								== BTT_GATT_CLIENT_REQ_REFRESH) || (type
+										== BTT_GATT_CLIENT_REQ_TEST_COMMAND)) ?
 										FALSE : TRUE);
 		return TRUE;
 	}
@@ -1638,5 +1655,45 @@ static void run_gatt_client_dereg_for_notification(int argc, char **argv)
 	sscanf(argv[7], "%"SCNd8"", &req.char_id.inst_id);
 
 	process_request(BTT_GATT_CLIENT_REQ_DEREGISTER_FOR_NOTIFICATION, &req,
+			DEFAULT_TIME_SEC);
+}
+
+static void run_gatt_client_test_command(int argc, char **argv)
+{
+	struct btt_gatt_client_test_command req;
+	char input[256];
+
+	sscanf(argv[1], "%d", &req.command);
+
+	if(!sscanf_bdaddr(argv[2], req.bda1.address)) {
+		BTT_LOG_S("Error: Incorrect address\n");
+		return;
+	}
+
+	sscanf(argv[3], "%s", input);
+
+	if (!process_UUID_sscanf(input, req.uuid1.uu))
+		return;
+
+	if (argc > 4) {
+		sscanf(argv[4], "%"SCNd16"", &req.u1);
+
+		if (argc > 5) {
+			sscanf(argv[5], "%"SCNd16"", &req.u2);
+
+			if (argc > 6) {
+				sscanf(argv[6], "%"SCNd16"", &req.u3);
+
+				if (argc > 7) {
+					sscanf(argv[7], "%"SCNd16"", &req.u4);
+
+					if (argc > 8)
+						sscanf(argv[8], "%"SCNd16"", &req.u5);
+				}
+			}
+		}
+	}
+
+	process_request(BTT_GATT_CLIENT_REQ_TEST_COMMAND, &req,
 			DEFAULT_TIME_SEC);
 }

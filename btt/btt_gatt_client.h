@@ -237,6 +237,19 @@ struct btt_gatt_client_dereg_for_notification {
 	btgatt_gatt_id_t char_id;
 };
 
+struct btt_gatt_client_test_command {
+	struct btt_message hdr;
+
+	int command;
+	bt_bdaddr_t bda1;
+	bt_uuid_t uuid1;
+	uint16_t u1;
+	uint16_t u2;
+	uint16_t u3;
+	uint16_t u4;
+	uint16_t u5;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,

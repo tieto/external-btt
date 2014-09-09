@@ -358,6 +358,27 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 				&msg.addr, &msg.srvc_id, &msg.char_id);
 		break;
 	}
+	case BTT_CMD_GATT_CLIENT_TEST_COMMAND:
+	{
+		struct btt_gatt_client_test_command msg;
+		btgatt_test_params_t params;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Error: incorrect size of received structure.\n");
+			status = BT_STATUS_FAIL;
+			break;
+		}
+
+		memcpy(params.bda1->address, msg.bda1.address, BD_ADDR_LEN);
+		memcpy(&params.uuid1, &msg.uuid1, sizeof(msg.uuid1));
+		params.u1 = msg.u1;
+		params.u2 = msg.u2;
+		params.u3 = msg.u3;
+		params.u4 = msg.u4;
+		params.u5 = msg.u5;BTT_LOG_I("D\n");
+		status = gatt_client_if->test_command(msg.command, &params);
+		break;
+	}
 	default:
 		status = BT_STATUS_UNHANDLED;
 		break;
