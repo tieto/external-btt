@@ -199,6 +199,13 @@ struct btt_gatt_client_write_characteristic {
 	char p_value[BTGATT_MAX_ATTR_LEN];
 };
 
+struct btt_gatt_client_execute_write {
+	struct btt_message hdr;
+
+	int conn_id;
+	int execute;
+};
+
 enum btt_gatt_client_cb_t {
 	/*TODO: better number */
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
@@ -377,6 +384,13 @@ struct btt_gatt_client_cb_write_characteristic {
 	int conn_id;
 	int status;
 	btgatt_write_params_t p_data;
+};
+
+struct btt_gatt_client_cb_execute_write {
+	struct btt_gatt_client_cb_hdr hdr;
+
+	int conn_id;
+	int status;
 };
 
 extern void run_gatt_client(int argc, char **argv);

@@ -41,6 +41,7 @@ static void run_gatt_client_get_descriptor(int argc, char **argv);
 static void run_gatt_client_read_characteristic(int argc, char **argv);
 static void run_gatt_client_read_descriptor(int argc, char **argv);
 static void run_gatt_client_write_characteristic(int argc, char **argv);
+static void run_gatt_client_execute_write(int argc, char **argv);
 static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
 		int server_sock);
@@ -71,7 +72,7 @@ static const struct extended_command gatt_client_commands[] = {
 		{{ "write_characteristic",			"<conn_id> <UUID> <is_primary> <inst_id> <UUID> <inst_id> <write_type> <auth_req> <hex_value>", run_gatt_client_write_characteristic}, 10, 10},
 		{{ "read_descriptor",				"<conn_id> <UUID> <is_primary> <inst_id> <UUID> <inst_id> <UUID> <inst_id> <auth_req>", run_gatt_client_read_descriptor}, 10, 10},
 		{{ "write_descriptor",				"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
-		{{ "execute_write",					"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
+		{{ "execute_write",					"<conn_id> <execute>", run_gatt_client_execute_write}, 3, 3},
 		{{ "register_for_notification",		"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "deregister_for_notification",	"NOT IMPLEMENTED YET",	NULL					}, 1, 1},
 		{{ "read_remote_rssi",				"<BD_ADDR> <client_if>", run_gatt_client_read_remote_rssi}, 3, 3},
@@ -474,6 +475,21 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 
 		break;
 	}
+	case BTT_GATT_CLIENT_REQ_EXECUTE_WRITE:
+	{
+		struct btt_gatt_client_execute_write *exe;
+
+		exe = (struct btt_gatt_client_execute_write *) data;
+		exe->hdr.command = BTT_CMD_GATT_CLIENT_EXECUTE_WRITE;
+		exe->hdr.length = sizeof(struct btt_gatt_client_execute_write)
+				- sizeof(struct btt_message);
+
+		if (!send_by_socket(server_sock, exe,
+				sizeof(struct btt_gatt_client_execute_write), 0))
+			return FALSE;
+
+		break;
+	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
 		close(server_sock);
@@ -860,6 +876,23 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 				printf_characteristic(cb.p_data.char_id, 0);
 				BTT_LOG_S("\n");
 			}
+		}
+
+		*wait_for_msg = FALSE;
+		return TRUE;
+	}
+	case BTT_GATT_CLIENT_CB_EXECUTE_WRITE:
+	{
+		struct btt_gatt_client_cb_execute_write cb;
+
+		if (!RECV(&cb, server_sock)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
+			return FALSE;
+		}
+
+		if (type == BTT_GATT_CLIENT_REQ_EXECUTE_WRITE) {
+			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+			BTT_LOG_S("Connection Id: %d.\n\n", cb.conn_id);
 		}
 
 		*wait_for_msg = FALSE;
@@ -1294,7 +1327,7 @@ static void run_gatt_client_read_characteristic(int argc, char **argv)
 	sscanf(argv[7], "%d", &req.auth_req);
 
 	process_request(BTT_GATT_CLIENT_REQ_READ_CHARACTERISTIC, &req,
-			DEFAULT_TIME_SEC);
+			LONG_TIME_SEC);
 }
 
 static void run_gatt_client_read_descriptor(int argc, char **argv)
@@ -1364,5 +1397,17 @@ static void run_gatt_client_write_characteristic(int argc, char **argv)
 	}
 
 	process_request(BTT_GATT_CLIENT_REQ_WRITE_CHARACTERISTIC, &req,
+			DEFAULT_TIME_SEC);
+}
+
+static void run_gatt_client_execute_write(int argc, char **argv)
+{
+	struct btt_gatt_client_execute_write req;
+	char input[256];
+
+	sscanf(argv[1], "%d", &req.conn_id);
+	sscanf(argv[2], "%d", &req.execute);
+
+	process_request(BTT_GATT_CLIENT_REQ_EXECUTE_WRITE, &req,
 			DEFAULT_TIME_SEC);
 }
