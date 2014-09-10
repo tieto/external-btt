@@ -51,6 +51,7 @@ enum btt_gatt_server_cb_t {
 	BTT_GATT_SERVER_CB_DELETE_SERVICE,
 	BTT_GATT_SERVER_CB_REQUEST_READ,
 	BTT_GATT_SERVER_CB_REQUEST_WRITE,
+	BTT_GATT_SERVER_CB_REQUEST_EXEC_WRITE,
 	BTT_GATT_SERVER_CB_END
 };
 
@@ -255,6 +256,15 @@ struct btt_gatt_server_cb_request_write {
 	int need_rsp;
 	int is_prep;
 	uint8_t value[BTGATT_MAX_ATTR_LEN];
+};
+
+struct btt_gatt_server_cb_request_exec_write {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int conn_id;
+	int trans_id;
+	bt_bdaddr_t bda;
+	int exec_write;
 };
 
 extern void run_gatt_server(int argc, char **argv);
