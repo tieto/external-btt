@@ -354,6 +354,27 @@ static void delete_service_cb(int status, int server_if, int srvc_handle)
 		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
 }
 
+static void request_read_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
+		int attr_handle, int offset, bool is_long)
+{
+	struct btt_gatt_server_cb_request_read btt_cb;
+
+	BTT_LOG_D("Callback GS Request Read");
+	btt_cb.hdr.type = BTT_GATT_SERVER_CB_REQUEST_READ;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_request_read)
+				- sizeof(struct btt_gatt_server_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.trans_id = trans_id;
+	memcpy(&btt_cb.bda, bda, sizeof(bt_bdaddr_t));
+	btt_cb.attr_handle = attr_handle;
+	btt_cb.offset = offset;
+	btt_cb.is_long = (int) is_long;
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_server_cb_request_read), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
+}
+
 static btgatt_server_callbacks_t sGattServerCallbacks = {
 		register_server_cb,
 		connect_cb,
@@ -364,7 +385,7 @@ static btgatt_server_callbacks_t sGattServerCallbacks = {
 		start_service_cb,
 		stop_service_cb,
 		delete_service_cb,
-		NULL,
+		request_read_cb,
 		NULL,
 		NULL,
 		NULL

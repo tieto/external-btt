@@ -48,6 +48,7 @@ enum btt_gatt_server_cb_t {
 	BTT_GATT_SERVER_CB_START_SERVICE,
 	BTT_GATT_SERVER_CB_STOP_SERVICE,
 	BTT_GATT_SERVER_CB_DELETE_SERVICE,
+	BTT_GATT_SERVER_CB_REQUEST_READ,
 	BTT_GATT_SERVER_CB_END
 };
 
@@ -227,6 +228,17 @@ struct btt_gatt_server_cb_status {
 	struct btt_gatt_server_cb_hdr hdr;
 
 	int status;
+};
+
+struct btt_gatt_server_cb_request_read {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int conn_id;
+	int trans_id;
+	bt_bdaddr_t bda;
+	int attr_handle;
+	int offset;
+	int is_long;
 };
 
 extern void run_gatt_server(int argc, char **argv);
