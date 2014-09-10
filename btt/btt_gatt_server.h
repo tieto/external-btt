@@ -19,6 +19,7 @@
 #endif
 
 #define BTT_GATT_SERVER_H
+#define BTGATT_MAX_ATTR_LEN 600
 
 #include "btt.h"
 #include <hardware/bt_gatt_types.h>
@@ -49,6 +50,7 @@ enum btt_gatt_server_cb_t {
 	BTT_GATT_SERVER_CB_STOP_SERVICE,
 	BTT_GATT_SERVER_CB_DELETE_SERVICE,
 	BTT_GATT_SERVER_CB_REQUEST_READ,
+	BTT_GATT_SERVER_CB_REQUEST_WRITE,
 	BTT_GATT_SERVER_CB_END
 };
 
@@ -239,6 +241,20 @@ struct btt_gatt_server_cb_request_read {
 	int attr_handle;
 	int offset;
 	int is_long;
+};
+
+struct btt_gatt_server_cb_request_write {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int conn_id;
+	int trans_id;
+	bt_bdaddr_t bda;
+	int attr_handle;
+	int offset;
+	int length;
+	int need_rsp;
+	int is_prep;
+	uint8_t value[BTGATT_MAX_ATTR_LEN];
 };
 
 extern void run_gatt_server(int argc, char **argv);

@@ -375,6 +375,31 @@ static void request_read_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
 		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
 }
 
+static void request_write_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
+		int attr_handle, int offset, int length, bool need_rsp, bool is_prep,
+		uint8_t* value)
+{
+	struct btt_gatt_server_cb_request_write btt_cb;
+
+	BTT_LOG_D("Callback GS Request Write");
+	btt_cb.hdr.type = BTT_GATT_SERVER_CB_REQUEST_WRITE;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_request_write)
+				- sizeof(struct btt_gatt_server_cb_hdr);
+	btt_cb.conn_id = conn_id;
+	btt_cb.trans_id = trans_id;
+	memcpy(&btt_cb.bda, bda, sizeof(bt_bdaddr_t));
+	btt_cb.attr_handle = attr_handle;
+	btt_cb.offset = offset;
+	btt_cb.length = length;
+	btt_cb.need_rsp = (int) need_rsp;
+	btt_cb.is_prep = (int) is_prep;
+	memcpy(&btt_cb.value, value, BTGATT_MAX_ATTR_LEN);
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_server_cb_request_write), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
+}
+
 static btgatt_server_callbacks_t sGattServerCallbacks = {
 		register_server_cb,
 		connect_cb,
@@ -386,7 +411,7 @@ static btgatt_server_callbacks_t sGattServerCallbacks = {
 		stop_service_cb,
 		delete_service_cb,
 		request_read_cb,
-		NULL,
+		request_write_cb,
 		NULL,
 		NULL
 };
