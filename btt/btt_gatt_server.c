@@ -36,26 +36,26 @@ static void run_gatt_server_send_indication(int argc, char **argv);
 static void run_gatt_server_send_response(int argc, char **argv);
 
 static const struct extended_command gatt_server_commands[] = {
-		{{ "help",						"",									run_gatt_server_help}, 1, MAX_ARGC},
-		{{ "register_server",			"<16-bits UUID>",					run_gatt_server_reg}, 2, 2},
-		{{ "unregister_server",			"<server_if>",						run_gatt_server_unreg}, 2, 2},
-		{{ "connect",					"<server_if><BD_ADDR><is_direct>",	run_gatt_server_connect}, 4, 4},
-		{{ "disconnect",				"<server_if><BD_ADDR><conn_id>",	run_gatt_server_disconnect}, 4, 4},
-		{{ "add_service",				"<server_if><16-bits UUID><instance_id><is_primary><num_handles>",
+		{{ "help",						"", run_gatt_server_help}, 1, MAX_ARGC},
+		{{ "register_server",			"<16-bits UUID>", run_gatt_server_reg}, 2, 2},
+		{{ "unregister_server",			"<server_if>", run_gatt_server_unreg}, 2, 2},
+		{{ "connect",					"<server_if> <BD_ADDR> <is_direct>", run_gatt_server_connect}, 4, 4},
+		{{ "disconnect",				"<server_if> <BD_ADDR> <conn_id>", run_gatt_server_disconnect}, 4, 4},
+		{{ "add_service",				"<server_if> <16-bits UUID> <instance_id> <is_primary> <num_handles>",
 				run_gatt_server_add_service}, 6, 6},
-		{{ "add_included_service",		"<server_if><service_handle><included_handle>",
+		{{ "add_included_service",		"<server_if> <service_handle> <included_handle>",
 				run_gatt_server_add_included_service}, 4, 4},
-		{{ "add_characteristic",		"<server_if><service_handle><16-bits UUID><properties><permissions>",
+		{{ "add_characteristic",		"<server_if> <service_handle> <16-bits UUID> <properties> <permissions>",
 				run_gatt_server_add_characteristic}, 6, 6},
-		{{ "add_descriptor",			"<server_if><service_handle><16-bits UUID><permissions>",
+		{{ "add_descriptor",			"<server_if> <service_handle> <16-bits UUID> <permissions>",
 				run_gatt_server_add_descriptor}, 5, 5},
-		{{ "start_service",				"<server_if><servcie_handle><transport>",
+		{{ "start_service",				"<server_if> <servcie_handle> <transport>",
 				run_gatt_server_start_service}, 4, 4},
-		{{ "stop_service",				"<server_if><service_handle>",		run_gatt_server_stop_service}, 3, 3},
-		{{ "delete_service",			"<server_if><service_handle>", 		run_gatt_server_delete_service}, 3, 3},
-		{{ "send_indication",			"<server_if><attr_handle><conn_id><confirm><p_value>",
+		{{ "stop_service",				"<server_if> <service_handle>", run_gatt_server_stop_service}, 3, 3},
+		{{ "delete_service",			"<server_if> <service_handle>", run_gatt_server_delete_service}, 3, 3},
+		{{ "send_indication",			"<server_if> <attr_handle> <conn_id> <confirm> <p_value>",
 				run_gatt_server_send_indication}, 6, 6},
-		{{ "send_response",				"<conn_id><trans_id><status><value><handle><offset><auth_req>",
+		{{ "send_response",				"<conn_id> <trans_id> <status> <value> <handle> <offset> <auth_req>",
 				run_gatt_server_send_response				}, 8, 8}
 };
 
@@ -185,14 +185,14 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_ADD_INCLUDED_SERVICE:
 	{
-		struct btt_gatt_server_add_included_srvc *add_included_srvc =
+		struct btt_gatt_server_add_included_srvc *add =
 				(struct btt_gatt_server_add_included_srvc*) data;
 
-		add_included_srvc->hdr.command = BTT_GATT_SERVER_CMD_ADD_INCLUDED_SERVICE;
-		add_included_srvc->hdr.length = sizeof(struct btt_gatt_server_add_included_srvc)
+		add->hdr.command = BTT_GATT_SERVER_CMD_ADD_INCLUDED_SERVICE;
+		add->hdr.length = sizeof(struct btt_gatt_server_add_included_srvc)
 						- sizeof(struct btt_message);
 
-		if (send(server_sock, add_included_srvc,
+		if (send(server_sock, add,
 				sizeof(struct btt_gatt_server_add_included_srvc), 0) == -1) {
 			close(server_sock);
 			return;
@@ -202,14 +202,14 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC:
 	{
-		struct btt_gatt_server_add_characteristic *add_characteristic =
+		struct btt_gatt_server_add_characteristic *add =
 				(struct btt_gatt_server_add_characteristic*) data;
 
-		add_characteristic->hdr.command = BTT_GATT_SERVER_CMD_ADD_CHARACTERISTIC;
-		add_characteristic->hdr.length = sizeof(struct btt_gatt_server_add_characteristic)
+		add->hdr.command = BTT_GATT_SERVER_CMD_ADD_CHARACTERISTIC;
+		add->hdr.length = sizeof(struct btt_gatt_server_add_characteristic)
 						- sizeof(struct btt_message);
 
-		if (send(server_sock, add_characteristic,
+		if (send(server_sock, add,
 				sizeof(struct btt_gatt_server_add_characteristic), 0) == -1) {
 			close(server_sock);
 			return;
@@ -219,14 +219,14 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_ADD_DESCRIPTOR:
 	{
-		struct btt_gatt_server_add_descriptor *add_descriptor =
+		struct btt_gatt_server_add_descriptor *add =
 				(struct btt_gatt_server_add_descriptor*) data;
 
-		add_descriptor->hdr.command = BTT_GATT_SERVER_CMD_ADD_DESCRIPTOR;
-		add_descriptor->hdr.length = sizeof(struct btt_gatt_server_add_descriptor)
+		add->hdr.command = BTT_GATT_SERVER_CMD_ADD_DESCRIPTOR;
+		add->hdr.length = sizeof(struct btt_gatt_server_add_descriptor)
 				- sizeof(struct btt_message);
 
-		if (send(server_sock, add_descriptor,
+		if (send(server_sock, add,
 				sizeof(struct btt_gatt_server_add_descriptor), 0) == -1) {
 			close(server_sock);
 			return;
@@ -236,14 +236,14 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_START_SERVICE:
 	{
-		struct btt_gatt_server_start_service *start_service =
+		struct btt_gatt_server_start_service *start =
 				(struct btt_gatt_server_start_service*) data;
 
-		start_service->hdr.command = BTT_GATT_SERVER_CMD_START_SERVICE;
-		start_service->hdr.length = sizeof(struct btt_gatt_server_start_service)
+		start->hdr.command = BTT_GATT_SERVER_CMD_START_SERVICE;
+		start->hdr.length = sizeof(struct btt_gatt_server_start_service)
 				- sizeof(struct btt_message);
 
-		if (send(server_sock, start_service,
+		if (send(server_sock, start,
 				sizeof(struct btt_gatt_server_start_service), 0) == -1) {
 			close(server_sock);
 			return;
@@ -270,14 +270,14 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_DELETE_SERVICE:
 	{
-		struct btt_gatt_server_delete_service *delete_service =
+		struct btt_gatt_server_delete_service *delete =
 				(struct btt_gatt_server_delete_service*) data;
 
-		delete_service->hdr.command = BTT_GATT_SERVER_CMD_DELETE_SERVICE;
-		delete_service->hdr.length = sizeof(struct btt_gatt_server_delete_service)
+		delete->hdr.command = BTT_GATT_SERVER_CMD_DELETE_SERVICE;
+		delete->hdr.length = sizeof(struct btt_gatt_server_delete_service)
 						- sizeof(struct btt_message);
 
-		if(send(server_sock, delete_service,
+		if (send(server_sock, delete,
 				sizeof(struct btt_gatt_server_delete_service),0) == -1) {
 			close(server_sock);
 			return;
@@ -294,7 +294,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		send_res->hdr.length = sizeof(struct btt_gatt_server_send_response)
 						- sizeof(struct btt_message);
 
-		if(send(server_sock, send_res,
+		if (send(server_sock, send_res,
 				sizeof(struct btt_gatt_server_send_response),0) == -1) {
 			close(server_sock);
 			return;
@@ -311,7 +311,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		send_ind->hdr.length = sizeof(struct btt_gatt_server_send_indication)
 						- sizeof(struct btt_message);
 
-		if(send(server_sock, send_ind,
+		if (send(server_sock, send_ind,
 				sizeof(struct btt_gatt_server_send_indication),0) == -1) {
 			close(server_sock);
 			return;
@@ -343,7 +343,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb, server_sock)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -357,7 +357,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb, server_sock)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -398,7 +398,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb, server_sock)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -419,9 +419,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		{
 			struct btt_gatt_server_cb_add_included_srvc cb;
 
-			memset(&cb,0,sizeof(cb));
+			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb, server_sock)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -430,7 +430,8 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
 				BTT_LOG_S("Server interface: %d\n", cb.server_if);
 				BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
-				BTT_LOG_S("Included Service Handle: %d\n\n", cb.incl_srvc_handle);
+				BTT_LOG_S("Included Service Handle: %d\n\n",
+						cb.incl_srvc_handle);
 			}
 
 			return;
@@ -439,9 +440,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		{
 			struct btt_gatt_server_cb_add_characteristic cb;
 
-			memset(&cb,0,sizeof(cb));
+			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb, server_sock)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -459,9 +460,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		{
 			struct btt_gatt_server_cb_add_descriptor cb;
 
-			memset(&cb,0,sizeof(cb));
+			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb, server_sock)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -480,14 +481,14 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		{
 			struct btt_gatt_server_cb_start_service cb;
 
-			memset(&cb,0,sizeof(cb));
+			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb, server_sock)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
 
-			if(type == BTT_GATT_SERVER_REQ_START_SERVICE) {
+			if (type == BTT_GATT_SERVER_REQ_START_SERVICE) {
 				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
 				BTT_LOG_S("Server interface: %d\n", cb.server_if);
 				BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
@@ -499,14 +500,14 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		{
 			struct btt_gatt_server_cb_stop_service cb;
 
-			memset(&cb,0,sizeof(cb));
+			memset(&cb, 0, sizeof(cb));
 
 			if (!RECV(&cb,server_sock)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
 
-			if(type == BTT_GATT_SERVER_REQ_STOP_SERVICE) {
+			if (type == BTT_GATT_SERVER_REQ_STOP_SERVICE) {
 				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
 				BTT_LOG_S("Server interface: %d\n", cb.server_if);
 				BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
@@ -518,14 +519,14 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		{
 			struct btt_gatt_server_cb_delete_service cb;
 
-			memset(&cb,0,sizeof(cb));
+			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb, server_sock)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
 
-			if(type == BTT_GATT_SERVER_REQ_DELETE_SERVICE) {
+			if (type == BTT_GATT_SERVER_REQ_DELETE_SERVICE) {
 				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
 				BTT_LOG_S("Server interface: %d\n", cb.server_if);
 				BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
@@ -544,7 +545,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 				return;
 			}
 
-			if(type == BTT_GATT_SERVER_REQ_SEND_RESPONSE) {
+			if (type == BTT_GATT_SERVER_REQ_SEND_RESPONSE) {
 				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
 				BTT_LOG_S("Handle: %d\n", cb.handle);
 			}
