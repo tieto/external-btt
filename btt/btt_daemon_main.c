@@ -23,7 +23,6 @@
 
 #include "btt_daemon_main.h"
 #include "btt_daemon_adapter.h"
-#include "btt_daemon_misc.h"
 #include "btt_daemon_gatt_client.h"
 #include "btt_daemon_gatt_server.h"
 #include "btt_adapter.h"
@@ -809,9 +808,6 @@ void run_daemon_start(int argc, char **argv)
 		if (btt_msg.command > BTT_ADAPTER_CMD_RSP_START &&
 				btt_msg.command < BTT_ADAPTER_CMD_RSP_END) {
 			handle_adapter_cmd(&btt_msg, socket_remote);
-		} else if (btt_msg.command > BTT_MISC_CMD_RSP_START &&
-				btt_msg.command < BTT_MISC_CMD_RSP_END) {
-			handle_misc_cmd(&btt_msg, socket_remote);
 		} else if (btt_msg.command > BTT_GATT_CLIENT_CMD_RSP_START &&
 				btt_msg.command < BTT_GATT_CLIENT_CMD_RSP_END) {
 			list = list_clear(list, free);
