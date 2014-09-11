@@ -184,6 +184,43 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 		gatt_server_if->delete_service(msg.server_if, msg.service_handle);
 		break;
 	}
+	case BTT_GATT_SERVER_CMD_SEND_INDICATION:
+	{
+		struct btt_gatt_server_send_indication msg;
+		struct btt_gatt_server_cb_status btt_cb;
+
+		btt_cb.status = -1;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Received invalid btt_gatt_server_send_indication\n");
+			close(socket_remote);
+			return;
+		}
+
+		btt_cb.status = gatt_server_if->send_indication(msg.server_if, msg.attribute_handle,
+				msg.conn_id, msg.len, msg.confirm, &msg.p_value[0]);
+		btt_cb.hdr.type = BTT_GATT_SERVER_CB_END;
+
+		if (send(socket_remote, &btt_cb,
+				sizeof(struct btt_gatt_server_cb_status), 0) == -1)
+			BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
+
+		break;
+	}
+	case BTT_GATT_SERVER_CMD_SEND_RESPONSE:
+	{
+		struct btt_gatt_server_send_response msg;
+
+		if (!RECV(&msg, socket_remote)) {
+			BTT_LOG_E("Received invalid btt_gatt_server_send_response\n");
+			close(socket_remote);
+			return;
+		}
+
+		gatt_server_if->send_response(msg.conn_id, msg.trans_id, msg.status,
+				&msg.response);
+		break;
+	}
 	default: break;
 	}
 }
@@ -419,6 +456,22 @@ static void request_exec_write_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
 		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
 }
 
+static void response_confirmation_cb(int status, int handle)
+{
+	struct btt_gatt_server_cb_response_confirmation btt_cb;
+
+	BTT_LOG_D("Callback GS Response Confirmation");
+	btt_cb.hdr.type = BTT_GATT_SERVER_CB_RESPONSE_CONFIRMATION;
+	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_response_confirmation)
+				- sizeof(struct btt_gatt_server_cb_hdr);
+	btt_cb.status = status;
+	btt_cb.handle = handle;
+
+	if (send(socket_remote, &btt_cb,
+			sizeof(struct btt_gatt_server_cb_response_confirmation), 0) == -1)
+		BTT_LOG_E("%s:System Socket Error\n",__FUNCTION__);
+}
+
 static btgatt_server_callbacks_t sGattServerCallbacks = {
 		register_server_cb,
 		connect_cb,
@@ -432,7 +485,7 @@ static btgatt_server_callbacks_t sGattServerCallbacks = {
 		request_read_cb,
 		request_write_cb,
 		request_exec_write_cb,
-		NULL
+		response_confirmation_cb
 };
 
 btgatt_server_callbacks_t *getGattServerCallbacks(void)

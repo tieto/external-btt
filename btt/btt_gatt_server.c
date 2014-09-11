@@ -32,6 +32,8 @@ static void run_gatt_server_add_descriptor(int argc, char **argv);
 static void run_gatt_server_start_service(int argc, char **argv);
 static void run_gatt_server_stop_service(int argc, char **argv);
 static void run_gatt_server_delete_service(int argc, char **argv);
+static void run_gatt_server_send_indication(int argc, char **argv);
+static void run_gatt_server_send_response(int argc, char **argv);
 
 static const struct extended_command gatt_server_commands[] = {
 		{{ "help",						"",									run_gatt_server_help}, 1, MAX_ARGC},
@@ -51,8 +53,10 @@ static const struct extended_command gatt_server_commands[] = {
 				run_gatt_server_start_service}, 4, 4},
 		{{ "stop_service",				"<server_if><service_handle>",		run_gatt_server_stop_service}, 3, 3},
 		{{ "delete_service",			"<server_if><service_handle>", 		run_gatt_server_delete_service}, 3, 3},
-		{{ "send_indication",			"NOT IMPLEMENTED YET",	NULL				}, 1, 1},
-		{{ "send_response",				"NOT IMPLEMENTED YET",	NULL				}, 1, 1}
+		{{ "send_indication",			"<server_if><attr_handle><conn_id><confirm><p_value>",
+				run_gatt_server_send_indication}, 6, 6},
+		{{ "send_response",				"<conn_id><trans_id><status><value><handle><offset><auth_req>",
+				run_gatt_server_send_response				}, 8, 8}
 };
 
 #define GATT_SERVER_SUPPORTED_COMMANDS sizeof(gatt_server_commands)/sizeof(struct extended_command)
@@ -281,6 +285,40 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		break;
 	}
+	case BTT_GATT_SERVER_REQ_SEND_RESPONSE:
+	{
+		struct btt_gatt_server_send_response *send_res =
+				(struct btt_gatt_server_send_response*) data;
+
+		send_res->hdr.command = BTT_GATT_SERVER_CMD_SEND_RESPONSE;
+		send_res->hdr.length = sizeof(struct btt_gatt_server_send_response)
+						- sizeof(struct btt_message);
+
+		if(send(server_sock, send_res,
+				sizeof(struct btt_gatt_server_send_response),0) == -1) {
+			close(server_sock);
+			return;
+		}
+
+		break;
+	}
+	case BTT_GATT_SERVER_REQ_SEND_INDICATION:
+	{
+		struct btt_gatt_server_send_indication *send_ind =
+				(struct btt_gatt_server_send_indication*) data;
+
+		send_ind->hdr.command = BTT_GATT_SERVER_CMD_SEND_INDICATION;
+		send_ind->hdr.length = sizeof(struct btt_gatt_server_send_indication)
+						- sizeof(struct btt_message);
+
+		if(send(server_sock, send_ind,
+				sizeof(struct btt_gatt_server_send_indication),0) == -1) {
+			close(server_sock);
+			return;
+		}
+
+		break;
+	}
 	default:
 		break;
 	}
@@ -495,6 +533,24 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			return;
 		}
+		case BTT_GATT_SERVER_CB_RESPONSE_CONFIRMATION:
+		{
+			struct btt_gatt_server_cb_response_confirmation cb;
+
+			memset(&cb, 0, sizeof(cb));
+
+			if (!RECV(&cb, server_sock)) {
+				BTT_LOG_S("Error: incorrect size of received structure.\n");
+				return;
+			}
+
+			if(type == BTT_GATT_SERVER_REQ_SEND_RESPONSE) {
+				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+				BTT_LOG_S("Handle: %d\n", cb.handle);
+			}
+
+			return;
+		}
 		default:
 			buffer = malloc(btt_cb.length);
 
@@ -655,6 +711,52 @@ static void run_gatt_server_delete_service(int argc, char **argv)
 	sscanf(argv[2], "%d", &req.service_handle);
 
 	process_request(BTT_GATT_SERVER_REQ_DELETE_SERVICE, &req);
+}
+
+static void run_gatt_server_send_indication(int argc, char **argv)
+{
+	struct btt_gatt_server_send_indication req;
+	char input[BTGATT_MAX_ATTR_LEN * 2];
+
+	sscanf(argv[1], "%d", &req.server_if);
+	sscanf(argv[2], "%d", &req.attribute_handle);
+	sscanf(argv[3], "%d", &req.conn_id);
+	sscanf(argv[4], "%d", &req.confirm);
+	sscanf(argv[5], "%s", input);
+	req.len = string_to_hex(input, (uint8_t *) req.p_value);
+
+	if (req.len < 0) {
+		BTT_LOG_S("Error: Incorrect hex value\n");
+		return;
+	}
+
+	process_request(BTT_GATT_SERVER_REQ_SEND_INDICATION, &req);
+}
+
+static void run_gatt_server_send_response(int argc, char **argv)
+{
+	struct btt_gatt_server_send_response req;
+	char input[BTGATT_MAX_ATTR_LEN * 2];
+	int len;
+
+	sscanf(argv[1], "%d", &req.conn_id);
+	sscanf(argv[2], "%d", &req.trans_id);
+	sscanf(argv[3], "%d", &req.status);
+	sscanf(argv[4], "%s", input);
+	 len = string_to_hex(input,
+			req.response.attr_value.value);
+
+	if (len < 0) {
+		BTT_LOG_S("Error: Incorrect hex value\n");
+		return;
+	}
+
+	req.response.attr_value.len = (uint16_t) len;
+	sscanf(argv[5], "%"SCNd16"", &req.response.attr_value.handle);
+	sscanf(argv[6], "%"SCNd16"", &req.response.attr_value.offset);
+	sscanf(argv[7], "%"SCNd8"", &req.response.attr_value.auth_req);
+
+	process_request(BTT_GATT_SERVER_REQ_SEND_RESPONSE, &req);
 }
 
 void run_gatt_server(int argc, char **argv)
