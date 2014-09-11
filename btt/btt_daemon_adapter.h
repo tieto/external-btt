@@ -24,4 +24,4 @@ extern bool bonding_peer_dev;
 
 extern void handle_adapter_cmd(const struct btt_message *btt_msg_adapter,
 		const int socket_remote);
-
+extern bt_callbacks_t *getBluetoothCallbacks(void);
