@@ -18,11 +18,10 @@
 #error Included twice
 #endif
 #define BTT_UTILS_H
+#define MAX_ARGC 20
 
 extern void print_commands(const struct command *commands,
 		unsigned int cmds_num);
-extern void run_generic(const struct command *commands, unsigned int cmds_num,
-		void (*help)(int argc, char **argv), int argc, char **argv);
 extern struct btt_message *btt_send_command(struct btt_message *msg);
 extern struct btt_message *btt_send_ext_command(struct ext_btt_message *ext_cmd,
 		char *data, int data_len);

@@ -45,30 +45,30 @@ static void run_daemon_start(int argc, char **argv) ;
 static void run_daemon_stop(int argc, char **argv);
 static void run_daemon_restart(int argc, char **argv);
 static void run_daemon_status(int argc, char **argv);
-static void run_daemon_generic(const struct command *commands,
+static void run_daemon_generic_extended(const struct extended_command *commands,
 		unsigned int number_of_commands,
 		void (*help)(int argc, char **argv), int argc, char **argv);
 static void btgatt_callbacks_init();
 
-static struct command daemon_commands[] = {
-		{"help",   "",            run_daemon_help},
-		{"start",  "[nodetach]",  run_daemon_start},
-		{"stop",   "",            run_daemon_stop},
-		{"restart","[nodetach]",  run_daemon_restart},
-		{"status", "",            run_daemon_status},
+static struct extended_command daemon_commands[] = {
+		{{"help",   "",            run_daemon_help}, 1, 1},
+		{{"start",  "[nodetach]",  run_daemon_start}, 1, 2},
+		{{"stop",   "",            run_daemon_stop}, 1, 1},
+		{{"restart","[nodetach]",  run_daemon_restart}, 1, 2},
+		{{"status", "",            run_daemon_status}, 1, 1}
 };
 
-#define DAEMON_SUPPORTED_COMMANDS sizeof(daemon_commands)/sizeof(struct command)
+#define DAEMON_SUPPORTED_COMMANDS sizeof(daemon_commands)/sizeof(struct extended_command)
 
 void run_daemon(int argc, char **argv)
 {
-	run_daemon_generic(daemon_commands, DAEMON_SUPPORTED_COMMANDS,
+	run_daemon_generic_extended(daemon_commands, DAEMON_SUPPORTED_COMMANDS,
 			run_daemon_help, argc, argv);
 }
 
 static void run_daemon_help(int argc, char **argv)
 {
-	print_commands(daemon_commands, DAEMON_SUPPORTED_COMMANDS);
+	print_commands_extended(daemon_commands, DAEMON_SUPPORTED_COMMANDS);
 	exit(EXIT_SUCCESS);
 }
 
@@ -621,7 +621,7 @@ static int start_bluedroid_hal(void)
 	return 0;
 }
 
-static void run_daemon_generic(const struct command *commands,
+static void run_daemon_generic_extended(const struct extended_command *commands,
 		unsigned int commands_num,
 		void (*help)(int argc, char **argv), int argc, char **argv)
 {
@@ -632,11 +632,21 @@ static void run_daemon_generic(const struct command *commands,
 	}
 
 	for (i_command = 0; i_command < commands_num; i_command += 1) {
-		if (strcmp(argv[1], commands[i_command].command) == 0) {
-			if (!commands[i_command].run)
+		if (strcmp(argv[1], commands[i_command].comm.command) == 0) {
+			if (!commands[i_command].comm.run) {
 				BTT_LOG_S("Not implemented yet");
-			else
-				commands[i_command].run(argc - 1, argv + 1);
+			} else {
+				if (argc - 1 > commands[i_command].argc_max) {
+					BTT_LOG_S("Error: Too many arguments\n");
+					exit(EXIT_FAILURE);
+				} else if (argc - 1 < commands[i_command].argc_min) {
+					BTT_LOG_S("Error: Too few arguments\n");
+					exit(EXIT_FAILURE);
+				}
+
+				commands[i_command].comm.run(argc - 1, argv + 1);
+			}
+
 			break;
 		}
 	}
@@ -658,11 +668,6 @@ void run_daemon_start(int argc, char **argv)
 	struct btt_message *btt_rsp;
 	int                 length;
 	bool                nodetach = FALSE;
-
-	if (argc > 2) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
 
 	if (argc == 2 && strcmp("nodetach", argv[1]) == 0) {
 		nodetach = TRUE;
@@ -844,11 +849,6 @@ void run_daemon_stop(int argc, char **argv)
 	struct btt_message *msg_rsp;
 	struct ext_btt_message ext_cmd;
 
-	if (argc > 1) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
-
 	btt_msg.command = BTT_CMD_DAEMON_STOP;
 	btt_msg.length  = 0;
 	msg_rsp = btt_send_command(&btt_msg);
@@ -872,11 +872,6 @@ void run_daemon_status(int argc, char **argv)
 	struct btt_message btt_message;
 	time_t             start_time;
 	time_t             end_time;
-
-	if (argc > 1) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
 
 	BTT_LOG_S("Status: ");
 
