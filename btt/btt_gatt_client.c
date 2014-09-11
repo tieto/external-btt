@@ -20,7 +20,6 @@
 
 #define DEFAULT_TIME_SEC 3
 #define LONG_TIME_SEC 10
-#define MAX_ARGC 20
 
 static void run_gatt_client_help(int argc, char **argv);
 static void run_gatt_client_scan(int argc, char **argv);

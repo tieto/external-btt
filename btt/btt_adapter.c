@@ -45,34 +45,34 @@ static void run_adapter_agent(int argc, char **argv);
 static void run_adapter_pair(int argc, char **argv);
 static void run_adapter_unpair(int argc, char **argv);
 
-static const struct command adapter_commands[] = {
-		{ "help",                   "",                                           run_adapter_help           },
-		{ "up",                     "",                                           run_adapter_up             },
-		{ "down",                   "",                                           run_adapter_down           },
-		{ "scan_mode",              "<none | connectable | connectable_discoverable >", run_adapter_scan_mode},
-		{ "name",                   "",                                           run_adapter_name           },
-		{ "address",                "",                                           run_adapter_address        },
-		{ "scan",                   "",                                           run_adapter_scan           },
-		{ "agent",                  "",                                           run_adapter_agent          },
-		{ "pair",                   "<BD_ADDR>",                                  run_adapter_pair           },
-		{ "unpair",                 "NOT IMPLEMENTED YET <BD_ADDR>",              NULL                       },
-		{ "simple_pairing",         "NOT IMPLEMENTED YET [on | off]",             NULL                       },
-		{ "class",                  "NOT IMPLEMENTED YET [NUMBER]",               NULL                       },
-		{ "connect",                "NOT IMPLEMENTED YET <BD_ADDR>",              NULL                       },
-		{ "send",                   "NOT IMPLEMENTED YET <HANDLE> <HEXLINES...>", NULL                       },
-		{ "receive",                "NOT IMPLEMENTED YET <HANDLE> <print | print_all | check [HEXLINES...] | wait [HEXLINES...]>", NULL },
-		{ "disconnect",             "NOT IMPLEMENTED YET <HANDLE>",               NULL                       }
+static const struct extended_command adapter_commands[] = {
+		{{ "help",                   "",                                           run_adapter_help           }, 1, MAX_ARGC},
+		{{ "up",                     "",                                           run_adapter_up             }, 1, 1},
+		{{ "down",                   "",                                           run_adapter_down           }, 1, 1},
+		{{ "scan_mode",              "<none | connectable | connectable_discoverable >", run_adapter_scan_mode}, 2, 2},
+		{{ "name",                   "",                                           run_adapter_name           }, 1, 1},
+		{{ "address",                "",                                           run_adapter_address        }, 1, 1},
+		{{ "scan",                   "",                                           run_adapter_scan           }, 1, 1},
+		{{ "agent",                  "",                                           run_adapter_agent          }, 1, 1},
+		{{ "pair",                   "<BD_ADDR>",                                  run_adapter_pair           }, 2, 2},
+		{{ "unpair",                 "NOT IMPLEMENTED YET <BD_ADDR>",              NULL                       }, 2, 2},
+		{{ "simple_pairing",         "NOT IMPLEMENTED YET [on | off]",             NULL                       }, 1, 2},
+		{{ "class",                  "NOT IMPLEMENTED YET [NUMBER]",               NULL                       }, 1, 2},
+		{{ "connect",                "NOT IMPLEMENTED YET <BD_ADDR>",              NULL                       }, 2, 2},
+		{{ "send",                   "NOT IMPLEMENTED YET <HANDLE> <HEXLINES...>", NULL                       }, 3, MAX_ARGC},
+		{{ "receive",                "NOT IMPLEMENTED YET <HANDLE> <print | print_all | check [HEXLINES...] | wait [HEXLINES...]>", NULL }, 3, MAX_ARGC},
+		{{ "disconnect",             "NOT IMPLEMENTED YET <HANDLE>",               NULL                       }, 2, 2}
 };
 
-#define ADAPTER_SUPPORTED_COMMANDS sizeof(adapter_commands)/sizeof(struct command)
+#define ADAPTER_SUPPORTED_COMMANDS sizeof(adapter_commands)/sizeof(struct extended_command)
 
 void run_adapter(int argc, char **argv) {
-	run_generic(adapter_commands, ADAPTER_SUPPORTED_COMMANDS,
+	run_generic_extended(adapter_commands, ADAPTER_SUPPORTED_COMMANDS,
 			run_adapter_help, argc, argv);
 }
 
 void run_adapter_help(int argc, char **argv) {
-	print_commands(adapter_commands, ADAPTER_SUPPORTED_COMMANDS);
+	print_commands_extended(adapter_commands, ADAPTER_SUPPORTED_COMMANDS);
 	exit(EXIT_SUCCESS);
 }
 
@@ -480,75 +480,37 @@ static void process_request(enum reguest_type_t type, void *data)
 
 static void run_adapter_address(int argc, char **argv)
 {
-	if (argc != 1) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
-
 	process_request(BTT_REQ_ADDRESS, NULL);
 }
 
 static void run_adapter_scan(int argc, char **argv)
 {
-	if (argc != 1) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
-
 	process_request(BTT_REQ_SCAN, NULL);
 }
 
 static void run_adapter_agent(int argc, char **argv)
 {
-	if (argc != 1) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
-
 	process_request(BTT_REQ_AGENT, NULL);
 }
 
 static void run_adapter_name(int argc, char **argv)
 {
-	if (argc != 1) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
-
 	process_request(BTT_REQ_NAME, NULL);
 }
 
 static void run_adapter_up(int argc, char **argv)
 {
-	if (argc != 1) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
-
 	process_request(BTT_REQ_UP, NULL);
 }
 
 static void run_adapter_down(int argc, char **argv)
 {
-	if (argc != 1) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
-
 	process_request(BTT_REQ_DOWN, NULL);
 }
 
 static void run_adapter_scan_mode(int argc, char **argv)
 {
 	unsigned int mode;
-
-	if (argc < 2) {
-		BTT_LOG_S("Error: Too few arguments\n");
-		return;
-	} else if (argc > 3) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
 
 	if (strcmp(argv[1], "none") == 0)
 		mode = 0;
@@ -571,14 +533,6 @@ static void run_adapter_pair(int argc, char **argv)
 {
 	struct btt_req_pair req;
 
-	if (argc < 2) {
-		BTT_LOG_S("Error: Too few arguments\n");
-		return;
-	} else if (argc > 3) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
-
 	sscanf(argv[1], "%"SCNx8":%"SCNx8":%"SCNx8":%"SCNx8":%"SCNx8":%"SCNx8,
 			&req.addr[0], &req.addr[1], &req.addr[2],
 			&req.addr[3], &req.addr[4], &req.addr[5]);
@@ -589,14 +543,6 @@ static void run_adapter_pair(int argc, char **argv)
 static void run_adapter_unpair(int argc, char **argv)
 {
 	struct btt_req_pair req;
-
-	if (argc < 2) {
-		BTT_LOG_S("Error: Too few arguments\n");
-		return;
-	} else if (argc > 3) {
-		BTT_LOG_S("Error: Too many arguments\n");
-		return;
-	}
 
 	sscanf(argv[1], "%"SCNx8":%"SCNx8":%"SCNx8":%"SCNx8":%"SCNx8":%"SCNx8,
 			&req.addr[0], &req.addr[1], &req.addr[2],

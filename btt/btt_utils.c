@@ -87,32 +87,6 @@ void print_commands_extended(const struct extended_command *commands,
 	BTT_LOG_S("\n");
 }
 
-void run_generic(const struct command *commands, unsigned int cmds_num,
-		void (*help)(int argc, char **argv), int argc, char **argv)
-{
-	unsigned int i;
-
-	if (argc <= 1)
-		help(0, NULL);
-
-	if (strcmp(argv[1], "help") != 0)
-		btt_daemon_check();
-
-	for (i = 0; i < cmds_num; i += 1) {
-		if (strcmp(argv[1], commands[i].command) == 0) {
-			if (!commands[i].run)
-				BTT_LOG_S("Not implemented yet\n");
-			else
-				commands[i].run(argc - 1, argv + 1);
-			break;
-		}
-	}
-	if (i >= cmds_num) {
-		BTT_LOG_S("Unknown \"%s\" command: <%s>\n", argv[0], argv[1]);
-		exit(EXIT_FAILURE);
-	}
-}
-
 void run_generic_extended(const struct extended_command *commands,
 		unsigned int cmds_num, void (*help)(int argc, char **argv),
 		int argc, char **argv)

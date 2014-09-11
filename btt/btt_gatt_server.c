@@ -18,8 +18,6 @@
 #include "btt.h"
 #include "btt_utils.h"
 
-#define MAX_ARGC 20
-
 static void run_gatt_server_help(int argc, char **argv);
 static void run_gatt_server_reg(int argc, char **argv);
 static void run_gatt_server_unreg(int argc, char **argv);
