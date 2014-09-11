@@ -23,6 +23,7 @@
 
 #include "btt.h"
 #include <hardware/bt_gatt_types.h>
+#include <hardware/bt_gatt_server.h>
 
 enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_REGISTER_SERVER = 3000,
@@ -36,6 +37,8 @@ enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_START_SERVICE,
 	BTT_GATT_SERVER_REQ_STOP_SERVICE,
 	BTT_GATT_SERVER_REQ_DELETE_SERVICE,
+	BTT_GATT_SERVER_REQ_SEND_INDICATION,
+	BTT_GATT_SERVER_REQ_SEND_RESPONSE,
 	BTT_GATT_SERVER_REQ_END
 };
 
@@ -52,6 +55,7 @@ enum btt_gatt_server_cb_t {
 	BTT_GATT_SERVER_CB_REQUEST_READ,
 	BTT_GATT_SERVER_CB_REQUEST_WRITE,
 	BTT_GATT_SERVER_CB_REQUEST_EXEC_WRITE,
+	BTT_GATT_SERVER_CB_RESPONSE_CONFIRMATION,
 	BTT_GATT_SERVER_CB_END
 };
 
@@ -138,6 +142,26 @@ struct btt_gatt_server_delete_service {
 
 	int server_if;
 	int service_handle;
+};
+
+struct btt_gatt_server_send_indication {
+	struct btt_message hdr;
+
+	int server_if;
+	int attribute_handle;
+	int conn_id;
+	int len;
+	int confirm;
+	char p_value[BTGATT_MAX_ATTR_LEN];
+};
+
+struct btt_gatt_server_send_response {
+	struct btt_message hdr;
+
+	int conn_id;
+	int trans_id;
+	int status;
+	btgatt_response_t response;
 };
 
 /* Structures for callbacks */
@@ -265,6 +289,13 @@ struct btt_gatt_server_cb_request_exec_write {
 	int trans_id;
 	bt_bdaddr_t bda;
 	int exec_write;
+};
+
+struct btt_gatt_server_cb_response_confirmation {
+	struct btt_gatt_server_cb_hdr hdr;
+
+	int status;
+	int handle;
 };
 
 extern void run_gatt_server(int argc, char **argv);
