@@ -45,6 +45,7 @@ extern bool list_contains(struct list_element *list, void *data,
 extern struct list_element *list_append(struct list_element *list,void *data);
 struct list_element *list_clear(struct list_element *list,
 		void (*data_destroy)(void *));
+extern void print_bdaddr(uint8_t *source);
 extern bool sscanf_bdaddr(char *src, uint8_t *dest);
 extern void byte_swap(uint8_t *src, uint8_t *dest);
 extern void invert_hex_UUID(uint8_t *src, uint8_t *dest, bool swap_bytes);
@@ -54,6 +55,8 @@ extern bool sscanf_UUID(char *src, uint8_t *dest, bool invert,
 extern void printf_UUID_128(uint8_t *src, bool invert, bool swap_bytes);
 extern bool sscanf_UUID_128(char *src, uint8_t *dest, bool invert,
 		bool swap_bytes);
+int get_hexlines_length(int i_arg, int argc, char **argv);
+int hexlines_to_data(int i_arg, int argc, char **argv, unsigned char *data);
 
 /* return FALSE if length of received structure is different
  * from expected length */

@@ -27,65 +27,6 @@
 #include "btt_daemon_main.h"
 #include "btt_utils.h"
 
-int get_hexlines_length(int i_arg, int argc, char **argv)
-{
-	int length = 0;
-	int arg_length;
-
-	for (i_arg = 2; i_arg < argc; i_arg += 1) {
-		arg_length = strlen(argv[i_arg]);
-		length += arg_length / 2;
-		if (arg_length % 2) {
-			BTT_LOG_S("Error: Wrong argument length in hexline number %i\n",
-					i_arg - 1);
-			return -1;
-		}
-	}
-
-	return length;
-}
-
-int hexlines_to_data(int i_arg, int argc, char **argv, unsigned char *data)
-{
-	unsigned int i_char;
-	unsigned int arg_length;
-	int          length = 0;
-	char         num[3] = {0,0,0};
-
-	for (i_arg = 2; i_arg < argc; i_arg += 1) {
-		arg_length = strlen(argv[i_arg]);
-
-		for (i_char = 0; i_char < arg_length - 1; i_char += 2) {
-			num[0] = argv[i_arg][i_char];
-			num[1] = argv[i_arg][i_char + 1];
-
-			if (!isxdigit(num[0])) {
-				BTT_LOG_S("Error: Wrong character in hexline number %i: <%c>\n",
-						i_arg - 1, num[0]);
-				return -1;
-			}
-
-			if (!isxdigit(num[1])) {
-				BTT_LOG_S("Error: Wrong character in hexline number %i: <%c>\n",
-						i_arg - 1, num[1]);
-				return -2;
-			}
-
-			data[length] = strtoul(num, NULL, 16);
-			length += 1;
-		}
-	}
-
-	return length;
-}
-
-void print_bdaddr(uint8_t *source)
-{
-	BTT_LOG_S("%02X:%02X:%02X:%02X:%02X:%02X ",
-			source[0], source[1], source[2],
-			source[3], source[4], source[5]);
-}
-
 static void run_help(int argc, char **argv);
 
 static struct command commands[] = {
