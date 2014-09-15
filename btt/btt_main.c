@@ -28,13 +28,15 @@
 #include "btt_utils.h"
 
 static void run_help(int argc, char **argv);
+static void run_exit(int argc, char **argv);
 
 static struct command commands[] = {
 		{ "help",    "", run_help    },
 		{ "daemon",  "", run_daemon  },
 		{ "adapter", "", run_adapter },
 		{ "gattc","", run_gatt_client },
-		{ "gatts", "", run_gatt_server }
+		{ "gatts", "", run_gatt_server },
+		{ "exit", "", run_exit }
 };
 
 #define UI_SUPPORTED_COMMANDS sizeof(commands)/sizeof(struct command)
@@ -54,6 +56,12 @@ static void run_help(int argc, char **argv)
 		"\n", VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE);
 
 	print_commands(commands, UI_SUPPORTED_COMMANDS);
+	exit(EXIT_SUCCESS);
+}
+
+static void run_exit(int argc, char **argv)
+{
+	BTT_LOG_S("Bluedroid Test Tool exited. \n\n");
 	exit(EXIT_SUCCESS);
 }
 
