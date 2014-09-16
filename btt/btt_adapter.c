@@ -73,7 +73,6 @@ void run_adapter(int argc, char **argv) {
 
 void run_adapter_help(int argc, char **argv) {
 	print_commands_extended(adapter_commands, ADAPTER_SUPPORTED_COMMANDS);
-	exit(EXIT_SUCCESS);
 }
 
 /* TODO:
@@ -316,6 +315,7 @@ static void process_request(enum reguest_type_t type, void *data)
 						ssp_request.passkey);
 
 				scanf("%1s", buf);
+
 				if (buf[0] != 'Y') {
 					cmd_rsp.accept = 0;
 

@@ -17,6 +17,7 @@
 #include "btt.h"
 #include <signal.h>
 #include <sys/capability.h>
+#include <sys/wait.h>
 #include <hardware/bt_gatt.h>
 
 #include "btt_utils.h"
@@ -69,7 +70,6 @@ void run_daemon(int argc, char **argv)
 static void run_daemon_help(int argc, char **argv)
 {
 	print_commands_extended(daemon_commands, DAEMON_SUPPORTED_COMMANDS);
-	exit(EXIT_SUCCESS);
 }
 
 void btt_daemon_check(void)
@@ -83,7 +83,7 @@ void btt_daemon_check(void)
 	rsp = (struct btt_msg_rsp_daemon_check *)btt_send_command(&msg);
 	if (!rsp) {
 		BTT_LOG_S("Error: daemon not run\n");
-		exit(EXIT_FAILURE);
+		return;
 	}
 
 	if (!(rsp->version.major   == VERSION_MAJOR &&
@@ -100,7 +100,7 @@ void btt_daemon_check(void)
 				rsp->version.release,
 				rsp->version.build);
 		free(rsp);
-		exit(EXIT_FAILURE);
+		return;
 	}
 
 	free(rsp);
@@ -203,6 +203,7 @@ static void *agent_socket_routine(void *arg)
 			close(socket_agent);
 			close(socket_listening_server);
 			pthread_exit(NULL);
+			break;
 		case BTT_RSP_AGENT_PIN_REPLY: {
 			struct btt_msg_cmd_agent_pin msg;
 
@@ -321,6 +322,7 @@ static void run_daemon_generic_extended(const struct extended_command *commands,
 
 	if (argc <= 1) {
 		help(0, NULL);
+		return;
 	}
 
 	for (i_command = 0; i_command < commands_num; i_command += 1) {
@@ -330,10 +332,10 @@ static void run_daemon_generic_extended(const struct extended_command *commands,
 			} else {
 				if (argc - 1 > commands[i_command].argc_max) {
 					BTT_LOG_S("Error: Too many arguments\n");
-					exit(EXIT_FAILURE);
+					return;
 				} else if (argc - 1 < commands[i_command].argc_min) {
 					BTT_LOG_S("Error: Too few arguments\n");
-					exit(EXIT_FAILURE);
+					return;
 				}
 
 				commands[i_command].comm.run(argc - 1, argv + 1);
@@ -344,7 +346,7 @@ static void run_daemon_generic_extended(const struct extended_command *commands,
 	}
 	if (i_command >= commands_num) {
 		BTT_LOG_S("Unknown \"%s\" command: <%s>\n", argv[0], argv[1]);
-		exit(EXIT_FAILURE);
+		return;
 	}
 }
 
@@ -375,7 +377,7 @@ void run_daemon_start(int argc, char **argv)
 	if (btt_rsp) {
 		BTT_LOG_S("Error: daemon seems to be run\n");
 		free(btt_rsp);
-		exit(EXIT_FAILURE);
+		return;
 	}
 
 	BTT_LOG_S("Starting BTT daemon...\n");
@@ -384,16 +386,16 @@ void run_daemon_start(int argc, char **argv)
 		pid = fork();
 		if (pid < 0) {
 			BTT_LOG_E("Starting BTT daemon: FAIL (1)\n");
-			exit(EXIT_FAILURE);
+			return;
 		}
 
 		if (pid > 0)
-			exit(EXIT_SUCCESS);
+			return;
 
 		sid = setsid();
 		if (sid < 0) {
 			BTT_LOG_E("Starting BTT daemon: FAIL (2)\n");
-			exit(EXIT_FAILURE);
+			return;
 		}
 	}
 
@@ -403,7 +405,7 @@ void run_daemon_start(int argc, char **argv)
 
 	if ((chdir("/")) < 0) {
 		BTT_LOG_E("Starting BTT daemon: FAIL (3)\n");
-		exit(EXIT_FAILURE);
+		return;
 	}
 
 	if (!nodetach) {
@@ -430,20 +432,20 @@ void run_daemon_start(int argc, char **argv)
 	if (bind(socket_server, (struct sockaddr *)&local, len) == -1) {
 		BTT_LOG_E("Starting BTT daemon: FAIL (4)\n");
 		close(socket_server);
-		exit(EXIT_FAILURE);
+		return;
 	}
 
 	if (listen(socket_server, 5) == -1) {
 		BTT_LOG_E("Starting BTT daemon: FAIL (5)\n");
 		close(socket_server);
-		exit(EXIT_FAILURE);
+		return;
 	}
 
 	len = sizeof(struct sockaddr_un);
 
 	if (start_bluedroid_hal()) {
 		BTT_LOG_E("Starting BTT daemon: FAIL (6)\n");
-		exit(EXIT_FAILURE);
+		return;
 	}
 
 	BTT_LOG_I("Daemon successfully start at pid=%u\n", getpid());
@@ -539,6 +541,7 @@ void run_daemon_stop(int argc, char **argv)
 {
 	struct btt_message  btt_msg;
 	struct btt_message *msg_rsp;
+	int status = -1;
 
 	btt_msg.command = BTT_CMD_DAEMON_STOP;
 	btt_msg.length  = 0;
@@ -550,6 +553,7 @@ void run_daemon_stop(int argc, char **argv)
 
 	/*free list*/
 	list_clear(list, free);
+	wait(&status);
 }
 
 void run_daemon_status(int argc, char **argv)
@@ -565,7 +569,7 @@ void run_daemon_status(int argc, char **argv)
 
 	if ((server_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		BTT_LOG_S("system socket error\n");
-		exit(EXIT_FAILURE);
+		return;
 	}
 
 	server.sun_family = AF_UNIX;

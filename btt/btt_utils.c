@@ -93,8 +93,10 @@ void run_generic_extended(const struct extended_command *commands,
 {
 	unsigned int i;
 
-	if (argc <= 1)
+	if (argc <= 1) {
 		help(0, NULL);
+		return;
+	}
 
 	if (strcmp(argv[1], "help") != 0)
 		btt_daemon_check();
@@ -108,10 +110,10 @@ void run_generic_extended(const struct extended_command *commands,
 
 				if (argc - 1 > commands[i].argc_max) {
 					BTT_LOG_S("Error: Too many arguments\n");
-					exit(EXIT_FAILURE);
+					return;
 				} else if (argc - 1 < commands[i].argc_min) {
 					BTT_LOG_S("Error: Too few arguments\n");
-					exit(EXIT_FAILURE);
+					return;
 				}
 				commands[i].comm.run(argc - 1, argv + 1);
 			}
@@ -122,7 +124,7 @@ void run_generic_extended(const struct extended_command *commands,
 
 	if (i >= cmds_num) {
 		BTT_LOG_S("Unknown \"%s\" command: <%s>\n", argv[0], argv[1]);
-		exit(EXIT_FAILURE);
+		return;
 	}
 }
 

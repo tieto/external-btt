@@ -63,7 +63,6 @@ void run_gatt_server_help(int argc, char **argv)
 {
 	print_commands_extended(gatt_server_commands,
 			GATT_SERVER_SUPPORTED_COMMANDS);
-	exit(EXIT_SUCCESS);
 }
 
 static void process_request(enum btt_gatt_server_req_t type, void *data)
