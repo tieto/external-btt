@@ -80,12 +80,7 @@
 
 #define SOCK_PATH BTT_DIRECTORY"/"BTT_SOCKET_NAME
 #define AGENT_SOCK_PATH BTT_DIRECTORY"/"BTT_AGENT_SOCKET_NAME
-#define BTT_EXT_SOCKET_NAME        "btt_ext_daemon.socket"
-#define BTT_EXT_DAEMON_DIRECTORY_NAME     "btt_ext_daemon"
 #define SUB_CMD_DIVIDER '|'
-#define BTT_EXT_DAEMON_DIRECTORY BTT_DIRECTORY"/"BTT_EXT_DAEMON_DIRECTORY_NAME
-#define EXT_SOCK_PATH BTT_EXT_DAEMON_DIRECTORY"/"BTT_EXT_SOCKET_NAME
-#define EXT_DAEMON "/system/bin/btt_ext_daemon"
 
 #define VERSION_MAJOR    0
 #define VERSION_MINOR    1
@@ -113,22 +108,6 @@ struct extended_command {
 struct btt_message {
 	unsigned int command;
 	unsigned int length;
-};
-
-struct l2cap_session_data {
-	int      psm;
-	int      cid;
-	bool     omtu_set;
-	uint16_t omtu;
-	bool     imtu_set;
-	uint16_t imtu;
-	bool     conf_sent;
-	bool     conf_rcvd;
-	bool     connected;
-	bool     listening;
-	uint8_t  addr[BD_ADDR_LEN];
-	int      omtu_neg;
-	int      imtu_neg;
 };
 
 struct version {
@@ -326,29 +305,6 @@ enum btt_callback {
 	BTT_GATT_SERVER_CB_END
 };
 
-/*The peer won't pay attention to the cmd,
-   will only concern about the cmd_str.
-   The cmd string should be followed this structure*/
-struct ext_btt_message{
-	int cmd;
-	int sub_cmd;
-	int data_len;
-	char data[0];
-};
-
-struct ext_command_item {
-	char const *cmd_str;
-	char const *sub_cmd_str;
-	int cmd;
-	int sub_cmd;
-};
-
-static const struct ext_command_item ext_command_map[] = {
-		{ "sdp", "decode_records", BTT_EXT_SDP_CMD, BTT_EXT_SDP_DECODE_RECORDS_CMD },
-		{ "daemon", "stop", BTT_EXT_DEAMON_CMD, BTT_EXT_DAEMON_STOP_CMD }
-};
-
-#define TOTAL_EXT_CMDS_IN_MAP sizeof(ext_command_map)/sizeof(struct ext_command_item)
 
 #ifndef WITHOUT_STACK
 #include <sys/prctl.h>

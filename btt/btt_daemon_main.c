@@ -539,7 +539,6 @@ void run_daemon_stop(int argc, char **argv)
 {
 	struct btt_message  btt_msg;
 	struct btt_message *msg_rsp;
-	struct ext_btt_message ext_cmd;
 
 	btt_msg.command = BTT_CMD_DAEMON_STOP;
 	btt_msg.length  = 0;
@@ -547,9 +546,6 @@ void run_daemon_stop(int argc, char **argv)
 
 	BTT_LOG_S("Status: %s\n", msg_rsp ? "stopped" : "error");
 
-	ext_cmd.cmd     = BTT_EXT_DEAMON_CMD;
-	ext_cmd.sub_cmd = BTT_EXT_DAEMON_STOP_CMD;
-	btt_send_ext_command(&ext_cmd, NULL, 0);
 	free(msg_rsp);
 
 	/*free list*/
