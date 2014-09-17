@@ -23,8 +23,6 @@
 extern void print_commands(const struct command *commands,
 		unsigned int cmds_num);
 extern struct btt_message *btt_send_command(struct btt_message *msg);
-extern struct btt_message *btt_send_ext_command(struct ext_btt_message *ext_cmd,
-		char *data, int data_len);
 extern void run_generic_extended(const struct extended_command *commands,
 		unsigned int cmds_num, void (*help)(int argc, char **argv),
 		int argc, char **argv);
