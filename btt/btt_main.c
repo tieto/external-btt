@@ -101,6 +101,22 @@ static int create_argc(char *str_line)
 	return argc;
 }
 
+static void signal_handler(int sig)
+{
+	BTT_LOG_S("\nSignal catched: %d\n", sig);
+	run_exit(0, NULL);
+}
+
+static void signal_init(void)
+{
+	signal(SIGABRT, signal_handler);
+	signal(SIGFPE, signal_handler);
+	signal(SIGILL, signal_handler);
+	signal(SIGINT, signal_handler);
+	signal(SIGSEGV, signal_handler);
+	signal(SIGTERM, signal_handler);
+}
+
 static void run_exit(int argc, char **argv)
 {
 	free_argv(argv, argc + 1);
@@ -116,6 +132,8 @@ int main(int argc, char **argv)
 
 	mkdir(BTT_DIRECTORY, S_IRWXU|S_IRGRP|S_IXGRP);
 	print_commands(commands, UI_SUPPORTED_COMMANDS);
+
+	signal_init();
 
 	while (true) {
 		printf("> ");
