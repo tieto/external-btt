@@ -113,7 +113,6 @@ struct extended_command {
 struct btt_message {
 	unsigned int command;
 	unsigned int length;
-	char data[0];
 };
 
 struct l2cap_session_data {
