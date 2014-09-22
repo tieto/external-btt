@@ -502,7 +502,7 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		bool *wait_for_msg, int server_sock)
 {
 	unsigned int len, i;
-	struct btt_gatt_client_cb_hdr btt_cb;
+	struct btt_message btt_cb;
 	uint8_t empty_BD_ADDR[BD_ADDR_LEN];
 
 	errno = 0;
@@ -516,7 +516,7 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		return FALSE;
 	}
 
-	switch (btt_cb.type) {
+	switch (btt_cb.command) {
 	case BTT_GATT_CLIENT_CB_BT_STATUS:
 	{
 		struct btt_gatt_client_cb_bt_status stat;

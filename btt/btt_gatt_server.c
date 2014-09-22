@@ -73,7 +73,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	struct sockaddr_un server;
 	struct btt_message msg;
 	struct timeval tv;
-	struct btt_gatt_server_cb_hdr btt_cb;
+	struct btt_message btt_cb;
 	char *buffer;
 	unsigned int i;
 
@@ -296,7 +296,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
         /* here we receive all messages on the socket. But only requested
          * messages are printed (i.e. type == BTT_REQ_AGENT)
          */
-		switch (btt_cb.type) {
+		switch (btt_cb.command) {
 		case BTT_GATT_SERVER_CB_END:
 		{
 			struct btt_gatt_server_cb_status cb;

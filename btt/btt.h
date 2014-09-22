@@ -247,6 +247,85 @@ enum btt_ext_daemon_command {
 	BTT_EXT_DAEMON_COMMAND_END
 };
 
+enum btt_callback {
+	/* ssp request callback type
+	 * struct btt_cb_adapter_ssp_request
+	 */
+	BTT_ADAPTER_SSP_REQUEST = BTT_DAEMON_END + 1,
+	/* device fount callback type
+	 * struct btt_cb_adapter_device_found
+	 */
+	BTT_ADAPTER_DEVICE_FOUND,
+	/* discovery state callback
+	 * struct btt_cb_adapter_discovery
+	 */
+	BTT_ADAPTER_DISCOVERY,
+	/* adapter address callback
+	 * struct btt_cb_adapter_addr
+	 */
+	BTT_ADAPTER_ADDRESS,
+	/* callback thread will send this
+	 * message to agent when adapter state changed
+	 * struct btt_cb_adapter_state
+	 */
+	BTT_ADAPTER_STATE_CHANGED,
+	/* cb thread will send it when scan mode changed
+	 * struct btt_cb_adapter_scan_mode
+	 */
+	BTT_ADAPTER_SCAN_MODE_CHANGED,
+	/* cb thread will send it when name requested
+	 * struct btt_cb_adapter_name
+	 */
+	BTT_ADAPTER_NAME,
+	/* pin request callback type
+	 * struct btt_cb_adapter_pin_request
+	 */
+	BTT_ADAPTER_PIN_REQUEST,
+	/* bond state changed callback type
+	 * struct btt_cb_adapter_bond_state_changed
+	 */
+	BTT_ADAPTER_BOND_STATE_CHANGED,
+	/* END OF ADAPTER MSG*/
+	BTT_ADAPTER_END,
+
+	BTT_GATT_CLIENT_CB_REGISTER_CLIENT,
+	BTT_GATT_CLIENT_CB_SCAN_RESULT,
+	BTT_GATT_CLIENT_CB_CONNECT,
+	BTT_GATT_CLIENT_CB_DISCONNECT,
+	BTT_GATT_CLIENT_CB_SEARCH_COMPLETE,
+	BTT_GATT_CLIENT_CB_SEARCH_RESULT,
+	BTT_GATT_CLIENT_CB_GET_CHARACTERISTIC,
+	BTT_GATT_CLIENT_CB_GET_DESCRIPTOR,
+	BTT_GATT_CLIENT_CB_GET_INCLUDED_SERVICE,
+	BTT_GATT_CLIENT_CB_REGISTER_FOR_NOTIFICATION,
+	BTT_GATT_CLIENT_CB_NOTIFY,
+	BTT_GATT_CLIENT_CB_READ_CHARACTERISTIC,
+	BTT_GATT_CLIENT_CB_WRITE_CHARACTERISTIC,
+	BTT_GATT_CLIENT_CB_EXECUTE_WRITE,
+	BTT_GATT_CLIENT_CB_READ_DESCRIPTOR,
+	BTT_GATT_CLIENT_CB_WRITE_DESCRIPTOR,
+	BTT_GATT_CLIENT_CB_READ_REMOTE_RSSI,
+	BTT_GATT_CLIENT_CB_LISTEN,
+	BTT_GATT_CLIENT_CB_BT_STATUS,
+	BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE,
+	BTT_GATT_CLIENT_CB_END,
+
+	BTT_GATT_SERVER_CB_REGISTER_SERVER,
+	BTT_GATT_SERVER_CB_CONNECT,
+	BTT_GATT_SERVER_CB_ADD_SERVICE,
+	BTT_GATT_SERVER_CB_ADD_INCLUDED_SERVICE,
+	BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC,
+	BTT_GATT_SERVER_CB_ADD_DESCRIPTOR,
+	BTT_GATT_SERVER_CB_START_SERVICE,
+	BTT_GATT_SERVER_CB_STOP_SERVICE,
+	BTT_GATT_SERVER_CB_DELETE_SERVICE,
+	BTT_GATT_SERVER_CB_REQUEST_READ,
+	BTT_GATT_SERVER_CB_REQUEST_WRITE,
+	BTT_GATT_SERVER_CB_REQUEST_EXEC_WRITE,
+	BTT_GATT_SERVER_CB_RESPONSE_CONFIRMATION,
+	BTT_GATT_SERVER_CB_END
+};
+
 /*The peer won't pay attention to the cmd,
    will only concern about the cmd_str.
    The cmd string should be followed this structure*/
