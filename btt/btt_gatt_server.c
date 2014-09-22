@@ -100,12 +100,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		break;
 	case BTT_GATT_SERVER_REQ_REGISTER_SERVER:
 	{
-		struct btt_gatt_server_reg *register_server =
-				(struct btt_gatt_server_reg *) data;
+		struct btt_gatt_server_reg *register_server;
 
-		register_server->hdr.command = BTT_GATT_SERVER_CMD_REGISTER_SERVER;
-		register_server->hdr.length = sizeof(struct btt_gatt_server_reg)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, register_server, BTT_GATT_SERVER_CMD_REGISTER_SERVER);
 
 		if (send(server_sock, register_server,
 				sizeof(struct btt_gatt_server_reg), 0) == -1) {
@@ -117,12 +114,10 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_UNREGISTER_SERVER:
 	{
-		struct btt_gatt_server_unreg *unregister_server =
-				(struct btt_gatt_server_unreg *) data;
+		struct btt_gatt_server_unreg *unregister_server;
 
-		unregister_server->hdr.command = BTT_GATT_SERVER_CMD_UNREGISTER_SERVER;
-		unregister_server->hdr.length = sizeof(struct btt_gatt_server_unreg)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, unregister_server,
+				BTT_GATT_SERVER_CMD_UNREGISTER_SERVER);
 
 		if (send(server_sock, unregister_server,
 				sizeof(struct btt_gatt_server_unreg), 0) == -1) {
@@ -134,12 +129,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_CONNECT:
 	{
-		struct btt_gatt_server_connect *connect =
-				(struct btt_gatt_server_connect*) data;
+		struct btt_gatt_server_connect *connect;
 
-		connect->hdr.command = BTT_GATT_SERVER_CMD_CONNECT;
-		connect->hdr.length = sizeof(struct btt_gatt_server_connect)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, connect, BTT_GATT_SERVER_CMD_CONNECT);
 
 		if (send(server_sock, connect,
 				sizeof(struct btt_gatt_server_connect), 0) == -1) {
@@ -151,12 +143,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_DISCONNECT:
 	{
-		struct btt_gatt_server_disconnect *disconnect =
-				(struct btt_gatt_server_disconnect*) data;
+		struct btt_gatt_server_disconnect *disconnect;
 
-		disconnect->hdr.command = BTT_GATT_SERVER_CMD_DISCONNECT;
-		disconnect->hdr.length = sizeof(struct btt_gatt_server_disconnect)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, disconnect, BTT_GATT_SERVER_CMD_DISCONNECT);
 
 		if (send(server_sock, disconnect,
 				sizeof(struct btt_gatt_server_disconnect), 0) == -1) {
@@ -168,12 +157,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_ADD_SERVICE:
 	{
-		struct btt_gatt_server_add_service *add_service =
-				(struct btt_gatt_server_add_service*) data;
+		struct btt_gatt_server_add_service *add_service;
 
-		add_service->hdr.command = BTT_GATT_SERVER_CMD_ADD_SERVICE;
-		add_service->hdr.length = sizeof(struct btt_gatt_server_add_service)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, add_service, BTT_GATT_SERVER_CMD_ADD_SERVICE);
 
 		if (send(server_sock, add_service,
 				sizeof(struct btt_gatt_server_add_service), 0) == -1) {
@@ -185,12 +171,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_ADD_INCLUDED_SERVICE:
 	{
-		struct btt_gatt_server_add_included_srvc *add =
-				(struct btt_gatt_server_add_included_srvc*) data;
+		struct btt_gatt_server_add_included_srvc *add;
 
-		add->hdr.command = BTT_GATT_SERVER_CMD_ADD_INCLUDED_SERVICE;
-		add->hdr.length = sizeof(struct btt_gatt_server_add_included_srvc)
-						- sizeof(struct btt_message);
+		FILL_MSG_P(data, add, BTT_GATT_SERVER_CMD_ADD_INCLUDED_SERVICE);
 
 		if (send(server_sock, add,
 				sizeof(struct btt_gatt_server_add_included_srvc), 0) == -1) {
@@ -202,12 +185,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC:
 	{
-		struct btt_gatt_server_add_characteristic *add =
-				(struct btt_gatt_server_add_characteristic*) data;
+		struct btt_gatt_server_add_characteristic *add;
 
-		add->hdr.command = BTT_GATT_SERVER_CMD_ADD_CHARACTERISTIC;
-		add->hdr.length = sizeof(struct btt_gatt_server_add_characteristic)
-						- sizeof(struct btt_message);
+		FILL_MSG_P(data, add, BTT_GATT_SERVER_CMD_ADD_CHARACTERISTIC);
 
 		if (send(server_sock, add,
 				sizeof(struct btt_gatt_server_add_characteristic), 0) == -1) {
@@ -219,12 +199,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_ADD_DESCRIPTOR:
 	{
-		struct btt_gatt_server_add_descriptor *add =
-				(struct btt_gatt_server_add_descriptor*) data;
+		struct btt_gatt_server_add_descriptor *add;
 
-		add->hdr.command = BTT_GATT_SERVER_CMD_ADD_DESCRIPTOR;
-		add->hdr.length = sizeof(struct btt_gatt_server_add_descriptor)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, add, BTT_GATT_SERVER_CMD_ADD_DESCRIPTOR);
 
 		if (send(server_sock, add,
 				sizeof(struct btt_gatt_server_add_descriptor), 0) == -1) {
@@ -236,12 +213,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_START_SERVICE:
 	{
-		struct btt_gatt_server_start_service *start =
-				(struct btt_gatt_server_start_service*) data;
+		struct btt_gatt_server_start_service *start;
 
-		start->hdr.command = BTT_GATT_SERVER_CMD_START_SERVICE;
-		start->hdr.length = sizeof(struct btt_gatt_server_start_service)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, start, BTT_GATT_SERVER_CMD_START_SERVICE);
 
 		if (send(server_sock, start,
 				sizeof(struct btt_gatt_server_start_service), 0) == -1) {
@@ -253,12 +227,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_STOP_SERVICE:
 	{
-		struct btt_gatt_server_stop_service *stop_service =
-				(struct btt_gatt_server_stop_service*) data;
+		struct btt_gatt_server_stop_service *stop_service;
 
-		stop_service->hdr.command = BTT_GATT_SERVER_CMD_STOP_SERVICE;
-		stop_service->hdr.length = sizeof(struct btt_gatt_server_stop_service)
-						- sizeof(struct btt_message);
+		FILL_MSG_P(data, stop_service, BTT_GATT_SERVER_CMD_STOP_SERVICE);
 
 		if (send(server_sock, stop_service,
 				sizeof(struct btt_gatt_server_stop_service), 0) == -1) {
@@ -270,12 +241,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_DELETE_SERVICE:
 	{
-		struct btt_gatt_server_delete_service *delete =
-				(struct btt_gatt_server_delete_service*) data;
+		struct btt_gatt_server_delete_service *delete;
 
-		delete->hdr.command = BTT_GATT_SERVER_CMD_DELETE_SERVICE;
-		delete->hdr.length = sizeof(struct btt_gatt_server_delete_service)
-						- sizeof(struct btt_message);
+		FILL_MSG_P(data, delete, BTT_GATT_SERVER_CMD_DELETE_SERVICE);
 
 		if (send(server_sock, delete,
 				sizeof(struct btt_gatt_server_delete_service),0) == -1) {
@@ -287,12 +255,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_SEND_RESPONSE:
 	{
-		struct btt_gatt_server_send_response *send_res =
-				(struct btt_gatt_server_send_response*) data;
+		struct btt_gatt_server_send_response *send_res;
 
-		send_res->hdr.command = BTT_GATT_SERVER_CMD_SEND_RESPONSE;
-		send_res->hdr.length = sizeof(struct btt_gatt_server_send_response)
-						- sizeof(struct btt_message);
+		FILL_MSG_P(data, send_res, BTT_GATT_SERVER_CMD_SEND_RESPONSE);
 
 		if (send(server_sock, send_res,
 				sizeof(struct btt_gatt_server_send_response),0) == -1) {
@@ -304,12 +269,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	}
 	case BTT_GATT_SERVER_REQ_SEND_INDICATION:
 	{
-		struct btt_gatt_server_send_indication *send_ind =
-				(struct btt_gatt_server_send_indication*) data;
+		struct btt_gatt_server_send_indication *send_ind;
 
-		send_ind->hdr.command = BTT_GATT_SERVER_CMD_SEND_INDICATION;
-		send_ind->hdr.length = sizeof(struct btt_gatt_server_send_indication)
-						- sizeof(struct btt_message);
+		FILL_MSG_P(data, send_ind, BTT_GATT_SERVER_CMD_SEND_INDICATION);
 
 		if (send(server_sock, send_ind,
 				sizeof(struct btt_gatt_server_send_indication),0) == -1) {

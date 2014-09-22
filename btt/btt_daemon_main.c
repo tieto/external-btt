@@ -770,9 +770,7 @@ void run_daemon_start(int argc, char **argv)
 		case BTT_CMD_DAEMON_CHECK: {
 			struct btt_msg_rsp_daemon_check btt_rsp;
 
-			btt_rsp.hdr.command = BTT_RSP_DAEMON_CHECK;
-			btt_rsp.hdr.length  = sizeof(struct btt_msg_rsp_daemon_check) -
-					sizeof(struct btt_message);
+			FILL_HDR(btt_rsp, BTT_RSP_DAEMON_CHECK);
 
 			btt_rsp.version.major   = VERSION_MAJOR;
 			btt_rsp.version.minor   = VERSION_MINOR;

@@ -223,10 +223,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_scan *cmd_scan;
 
-		cmd_scan = (struct btt_gatt_client_scan *) data;
-		cmd_scan->hdr.command = BTT_CMD_GATT_CLIENT_SCAN;
-		cmd_scan->hdr.length = sizeof(struct btt_gatt_client_scan)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, cmd_scan, BTT_CMD_GATT_CLIENT_SCAN);
 
 		if (!send_by_socket(server_sock, cmd_scan,
 				sizeof(struct btt_gatt_client_scan), 0))
@@ -243,10 +240,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_register_client *register_client;
 
-		register_client = (struct btt_gatt_client_register_client *) data;
-		register_client->hdr.command = BTT_CMD_GATT_CLIENT_REGISTER_CLIENT;
-		register_client->hdr.length = sizeof(struct btt_gatt_client_register_client)
-						- sizeof(struct btt_message);
+		FILL_MSG_P(data, register_client, BTT_CMD_GATT_CLIENT_REGISTER_CLIENT);
 
 		if (!send_by_socket(server_sock, register_client,
 				sizeof(struct btt_gatt_client_register_client), 0))
@@ -258,10 +252,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_unregister_client *unregister_client;
 
-		unregister_client = (struct btt_gatt_client_unregister_client *) data;
-		unregister_client->hdr.command = BTT_CMD_GATT_CLIENT_UNREGISTER_CLIENT;
-		unregister_client->hdr.length = sizeof(struct btt_gatt_client_unregister_client)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, unregister_client, BTT_CMD_GATT_CLIENT_UNREGISTER_CLIENT);
 
 		if (!send_by_socket(server_sock, unregister_client,
 				sizeof(struct btt_gatt_client_unregister_client), 0))
@@ -273,10 +264,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_connect *connect;
 
-		connect = (struct btt_gatt_client_connect *) data;
-		connect->hdr.command = BTT_CMD_GATT_CLIENT_CONNECT;
-		connect->hdr.length = sizeof(struct btt_gatt_client_connect)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, connect, BTT_CMD_GATT_CLIENT_CONNECT);
 
 		if (!send_by_socket(server_sock, connect,
 				sizeof(struct btt_gatt_client_connect), 0))
@@ -288,10 +276,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_disconnect *disconnect;
 
-		disconnect = (struct btt_gatt_client_disconnect *) data;
-		disconnect->hdr.command = BTT_CMD_GATT_CLIENT_DISCONNECT;
-		disconnect->hdr.length = sizeof(struct btt_gatt_client_disconnect)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, disconnect, BTT_CMD_GATT_CLIENT_DISCONNECT);
 
 		if (!send_by_socket(server_sock, disconnect,
 				sizeof(struct btt_gatt_client_disconnect), 0))
@@ -303,10 +288,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_read_remote_rssi *read_rssi;
 
-		read_rssi = (struct btt_gatt_client_read_remote_rssi *) data;
-		read_rssi->hdr.command = BTT_CMD_GATT_CLIENT_READ_REMOTE_RSSI;
-		read_rssi->hdr.length = sizeof(struct btt_gatt_client_read_remote_rssi)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, read_rssi, BTT_CMD_GATT_CLIENT_READ_REMOTE_RSSI);
 
 		if (!send_by_socket(server_sock, read_rssi,
 				sizeof(struct btt_gatt_client_read_remote_rssi), 0))
@@ -318,10 +300,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_listen *listen;
 
-		listen = (struct btt_gatt_client_listen *) data;
-		listen->hdr.command = BTT_CMD_GATT_CLIENT_LISTEN;
-		listen->hdr.length = sizeof(struct btt_gatt_client_listen)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, listen, BTT_CMD_GATT_CLIENT_LISTEN);
 
 		if (!send_by_socket(server_sock, listen,
 				sizeof(struct btt_gatt_client_listen), 0))
@@ -333,10 +312,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_set_adv_data *adv;
 
-		adv = (struct btt_gatt_client_set_adv_data *) data;
-		adv->hdr.command = BTT_CMD_GATT_CLIENT_SET_ADV_DATA;
-		adv->hdr.length = sizeof(struct btt_gatt_client_set_adv_data)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, adv, BTT_CMD_GATT_CLIENT_SET_ADV_DATA);
 
 		if (!send_by_socket(server_sock, adv,
 				sizeof(struct btt_gatt_client_set_adv_data), 0))
@@ -348,10 +324,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_get_device_type *get;
 
-		get = (struct btt_gatt_client_get_device_type *) data;
-		get->hdr.command = BTT_CMD_GATT_CLIENT_GET_DEVICE_TYPE;
-		get->hdr.length = sizeof(struct btt_gatt_client_get_device_type)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, get, BTT_CMD_GATT_CLIENT_GET_DEVICE_TYPE);
 
 		if (!send_by_socket(server_sock, get,
 				sizeof(struct btt_gatt_client_listen), 0))
@@ -363,10 +336,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_refresh *refresh;
 
-		refresh = (struct btt_gatt_client_refresh *) data;
-		refresh->hdr.command = BTT_CMD_GATT_CLIENT_REFRESH;
-		refresh->hdr.length = sizeof(struct btt_gatt_client_refresh)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, refresh, BTT_CMD_GATT_CLIENT_REFRESH);
 
 		if (!send_by_socket(server_sock, refresh,
 				sizeof(struct btt_gatt_client_refresh), 0))
@@ -378,10 +348,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_search_service *search;
 
-		search = (struct btt_gatt_client_search_service *) data;
-		search->hdr.command = BTT_CMD_GATT_CLIENT_SEARCH_SERVICE;
-		search->hdr.length = sizeof(struct btt_gatt_client_search_service)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, search, BTT_CMD_GATT_CLIENT_SEARCH_SERVICE);
 
 		if (!send_by_socket(server_sock, search,
 				sizeof(struct btt_gatt_client_search_service), 0))
@@ -393,10 +360,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_get_included_service *get;
 
-		get = (struct btt_gatt_client_get_included_service *) data;
-		get->hdr.command = BTT_CMD_GATT_CLIENT_GET_INCLUDE_SERVICE;
-		get->hdr.length = sizeof(struct btt_gatt_client_get_included_service)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, get, BTT_CMD_GATT_CLIENT_GET_INCLUDE_SERVICE);
 
 		if (!send_by_socket(server_sock, get,
 				sizeof(struct btt_gatt_client_get_included_service), 0))
@@ -408,10 +372,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_get_characteristic *get;
 
-		get = (struct btt_gatt_client_get_characteristic *) data;
-		get->hdr.command = BTT_CMD_GATT_CLIENT_GET_CHARACTERISTIC;
-		get->hdr.length = sizeof(struct btt_gatt_client_get_characteristic)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, get, BTT_CMD_GATT_CLIENT_GET_CHARACTERISTIC);
 
 		if (!send_by_socket(server_sock, get,
 				sizeof(struct btt_gatt_client_get_characteristic), 0))
@@ -423,10 +384,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_get_descriptor *get;
 
-		get = (struct btt_gatt_client_get_descriptor *) data;
-		get->hdr.command = BTT_CMD_GATT_CLIENT_GET_DESCRIPTOR;
-		get->hdr.length = sizeof(struct btt_gatt_client_get_descriptor)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, get, BTT_CMD_GATT_CLIENT_GET_DESCRIPTOR);
 
 		if (!send_by_socket(server_sock, get,
 				sizeof(struct btt_gatt_client_get_descriptor), 0))
@@ -438,10 +396,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_read_characteristic *read;
 
-		read = (struct btt_gatt_client_read_characteristic *) data;
-		read->hdr.command = BTT_CMD_GATT_CLIENT_READ_CHARACTERISTIC;
-		read->hdr.length = sizeof(struct btt_gatt_client_read_characteristic)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, read, BTT_CMD_GATT_CLIENT_READ_CHARACTERISTIC);
 
 		if (!send_by_socket(server_sock, read,
 				sizeof(struct btt_gatt_client_read_characteristic), 0))
@@ -453,10 +408,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_read_descriptor *read;
 
-		read = (struct btt_gatt_client_read_descriptor *) data;
-		read->hdr.command = BTT_CMD_GATT_CLIENT_READ_DESCRIPTOR;
-		read->hdr.length = sizeof(struct btt_gatt_client_read_descriptor)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, read, BTT_CMD_GATT_CLIENT_READ_DESCRIPTOR);
 
 		if (!send_by_socket(server_sock, read,
 				sizeof(struct btt_gatt_client_read_descriptor), 0))
@@ -468,10 +420,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_write_characteristic *write;
 
-		write = (struct btt_gatt_client_write_characteristic *) data;
-		write->hdr.command = BTT_CMD_GATT_CLIENT_WRITE_CHARACTERISTIC;
-		write->hdr.length = sizeof(struct btt_gatt_client_write_characteristic)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, write, BTT_CMD_GATT_CLIENT_WRITE_CHARACTERISTIC);
 
 		if (!send_by_socket(server_sock, write,
 				sizeof(struct btt_gatt_client_write_characteristic), 0))
@@ -483,10 +432,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_execute_write *exe;
 
-		exe = (struct btt_gatt_client_execute_write *) data;
-		exe->hdr.command = BTT_CMD_GATT_CLIENT_EXECUTE_WRITE;
-		exe->hdr.length = sizeof(struct btt_gatt_client_execute_write)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, exe, BTT_CMD_GATT_CLIENT_EXECUTE_WRITE);
 
 		if (!send_by_socket(server_sock, exe,
 				sizeof(struct btt_gatt_client_execute_write), 0))
@@ -498,10 +444,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_write_descriptor *write;
 
-		write = (struct btt_gatt_client_write_descriptor *) data;
-		write->hdr.command = BTT_CMD_GATT_CLIENT_WRITE_DESCRIPTOR;
-		write->hdr.length = sizeof(struct btt_gatt_client_write_descriptor)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, write, BTT_CMD_GATT_CLIENT_WRITE_DESCRIPTOR);
 
 		if (!send_by_socket(server_sock, write,
 				sizeof(struct btt_gatt_client_write_descriptor), 0))
@@ -513,10 +456,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_reg_for_notification *reg;
 
-		reg = (struct btt_gatt_client_reg_for_notification *) data;
-		reg->hdr.command = BTT_CMD_GATT_CLIENT_REGISTER_FOR_NOTIFICATION;
-		reg->hdr.length = sizeof(struct btt_gatt_client_reg_for_notification)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, reg, BTT_CMD_GATT_CLIENT_REGISTER_FOR_NOTIFICATION);
 
 		if (!send_by_socket(server_sock, reg,
 				sizeof(struct btt_gatt_client_reg_for_notification), 0))
@@ -528,10 +468,8 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_dereg_for_notification *dereg;
 
-		dereg = (struct btt_gatt_client_dereg_for_notification *) data;
-		dereg->hdr.command = BTT_CMD_GATT_CLIENT_DEREGISTER_FOR_NOTIFICATION;
-		dereg->hdr.length = sizeof(struct btt_gatt_client_dereg_for_notification)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, dereg,
+				BTT_CMD_GATT_CLIENT_DEREGISTER_FOR_NOTIFICATION);
 
 		if (!send_by_socket(server_sock, dereg,
 				sizeof(struct btt_gatt_client_dereg_for_notification), 0))
@@ -543,10 +481,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	{
 		struct btt_gatt_client_test_command *test;
 
-		test = (struct btt_gatt_client_test_command *) data;
-		test->hdr.command = BTT_CMD_GATT_CLIENT_TEST_COMMAND;
-		test->hdr.length = sizeof(struct btt_gatt_client_test_command)
-				- sizeof(struct btt_message);
+		FILL_MSG_P(data, test, BTT_CMD_GATT_CLIENT_TEST_COMMAND);
 
 		if (!send_by_socket(server_sock, test,
 				sizeof(struct btt_gatt_client_test_command), 0))

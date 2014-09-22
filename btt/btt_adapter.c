@@ -193,9 +193,9 @@ static void process_request(enum reguest_type_t type, void *data)
 		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
-		cmd_scan.hdr.command = BTT_CMD_ADAPTER_SCAN_MODE;
-		cmd_scan.hdr.length  = sizeof(unsigned int);
 		cmd_scan.mode = *(unsigned int *)data;
+		FILL_HDR(cmd_scan, BTT_CMD_ADAPTER_SCAN_MODE);
+
 		if (send(server_sock, (const char *)&cmd_scan,
 				sizeof(struct btt_message) + cmd_scan.hdr.length, 0) == -1) {
 			close(server_sock);
@@ -213,9 +213,7 @@ static void process_request(enum reguest_type_t type, void *data)
 				(char *)&tv,sizeof(struct timeval));
 
 		req_pair = (struct btt_req_pair *)data;
-		cmd_pair.hdr.command = BTT_CMD_ADAPTER_PAIR;
-		cmd_pair.hdr.length  = sizeof(struct btt_msg_cmd_adapter_pair) -
-				sizeof(struct btt_message);
+		FILL_HDR(cmd_pair, BTT_CMD_ADAPTER_PAIR);
 		memcpy(cmd_pair.addr, req_pair->addr, sizeof(req_pair->addr));
 		if (send(server_sock, (const char *)&cmd_pair,
 				sizeof(struct btt_message) + cmd_pair.hdr.length, 0) == -1) {
@@ -234,9 +232,7 @@ static void process_request(enum reguest_type_t type, void *data)
 				(char *)&tv,sizeof(struct timeval));
 
 		req_unpair = (struct btt_req_pair *)data;
-		cmd_unpair.hdr.command = BTT_CMD_ADAPTER_UNPAIR;
-		cmd_unpair.hdr.length  = sizeof(struct btt_msg_cmd_adapter_pair) -
-				sizeof(struct btt_message);
+		FILL_HDR(cmd_unpair, BTT_CMD_ADAPTER_UNPAIR);
 		memcpy(cmd_unpair.addr, req_unpair->addr, sizeof(req_unpair->addr));
 		if (send(server_sock, (const char *)&cmd_unpair,
 				sizeof(struct btt_message) + cmd_unpair.hdr.length, 0) == -1) {
@@ -273,9 +269,7 @@ static void process_request(enum reguest_type_t type, void *data)
 				struct btt_msg_cmd_agent_pin cmd_rsp;
 				char pin_code[PIN_CODE_MAX_LEN+1] = {0};
 
-				cmd_rsp.hdr.command = BTT_RSP_AGENT_PIN_REPLY;
-				cmd_rsp.hdr.length  = sizeof(cmd_rsp) -
-						sizeof(struct btt_message);
+				FILL_HDR(cmd_rsp, BTT_RSP_AGENT_PIN_REPLY);
 
 				memcpy(cmd_rsp.addr, pin_req.bd_addr, BD_ADDR_LEN);
 				cmd_rsp.pin_len = 0;
@@ -311,9 +305,7 @@ static void process_request(enum reguest_type_t type, void *data)
 				struct btt_msg_cmd_agent_ssp cmd_rsp;
 				char buf[2] = {0};
 
-				cmd_rsp.hdr.command = BTT_RSP_AGENT_SSP_REPLY;
-				cmd_rsp.hdr.length  = sizeof(cmd_rsp) -
-						sizeof(struct btt_message);
+				FILL_HDR(cmd_rsp, BTT_RSP_AGENT_SSP_REPLY);
 				memcpy(cmd_rsp.addr, ssp_request.bd_addr, BD_ADDR_LEN);
 				cmd_rsp.variant = ssp_request.variant;
 
