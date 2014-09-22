@@ -60,3 +60,18 @@ extern bool sscanf_UUID_128(char *src, uint8_t *dest, bool invert,
  * from expected length */
 #define RECV(ptr, sock) (((recv((sock), (ptr), \
 		sizeof(*(ptr)), 0)) != (sizeof(*(ptr)))) ? FALSE : TRUE)
+
+#define FILL_HDR(str, comm) \
+	{ \
+		(((str).hdr.command) = (comm)); \
+		(((str).hdr.length) = (sizeof((str)) - \
+				sizeof(struct btt_message))); \
+	}
+
+#define FILL_HDR_P(ptr, comm) FILL_HDR((*ptr), comm)
+
+#define FILL_MSG_P(p_data, ptr, comm) \
+	{ \
+		((ptr) = (typeof((ptr))) (p_data)); \
+		FILL_HDR_P(ptr, comm); \
+	}
