@@ -35,10 +35,10 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 	struct btt_gatt_client_cb_get_device_type get_dev_type_cb;
 	bt_status_t status = BT_STATUS_SUCCESS;
 
-	get_dev_type_cb.hdr.type = BTT_GATT_CLIENT_CB_END;
-	bt_stat.hdr.type = BTT_GATT_CLIENT_CB_BT_STATUS;
+	get_dev_type_cb.hdr.command = BTT_GATT_CLIENT_CB_END;
+	bt_stat.hdr.command = BTT_GATT_CLIENT_CB_BT_STATUS;
 	bt_stat.hdr.length = sizeof(struct btt_gatt_client_cb_bt_status)
-					- sizeof(struct btt_gatt_client_cb_hdr);
+					- sizeof(struct btt_message);
 	bt_stat.status = BT_STATUS_SUCCESS;
 
 	switch (btt_msg->command) {
@@ -163,9 +163,9 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		}
 
 		get_dev_type_cb.type = gatt_client_if->get_device_type(&msg.addr);
-		get_dev_type_cb.hdr.type = BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE;
+		get_dev_type_cb.hdr.command = BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE;
 		get_dev_type_cb.hdr.length = sizeof(struct btt_gatt_client_cb_get_device_type)
-					- sizeof(struct btt_gatt_client_cb_hdr);
+					- sizeof(struct btt_message);
 		break;
 	}
 	case BTT_CMD_GATT_CLIENT_REFRESH:
@@ -392,7 +392,7 @@ void handle_gatt_client_cmd(const struct btt_message *btt_msg,
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 	}
 
-	if (get_dev_type_cb.hdr.type == BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE)
+	if (get_dev_type_cb.hdr.command == BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE)
 		if (send(socket_remote, &get_dev_type_cb,
 				sizeof(struct btt_gatt_client_cb_scan_result), 0) == -1)
 			BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
@@ -491,9 +491,9 @@ static void register_client_cb(int status, int client_if,
 {
 	struct btt_gatt_client_cb_register_client btt_cb;
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_REGISTER_CLIENT;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_REGISTER_CLIENT;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_register_client)
-					- sizeof(struct btt_gatt_client_cb_hdr);
+					- sizeof(struct btt_message);
 	btt_cb.status = status;
 	btt_cb.client_if = client_if;
 	memcpy(&btt_cb.app_uuid, app_uuid, sizeof(*app_uuid));
@@ -520,9 +520,9 @@ static void scan_result_cb(bt_bdaddr_t *bda, int rssi, uint8_t *adv_data)
 	memcpy(bdacpy, bda->address, BD_ADDR_LEN);
 	name_len = 0;
 	memset(&btt_cb, 0, sizeof(btt_cb));
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_SCAN_RESULT;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_SCAN_RESULT;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_scan_result)
-					- sizeof(struct btt_gatt_client_cb_hdr);
+					- sizeof(struct btt_message);
 	BTT_LOG_D("Callback_GC Scan Result");
 
 	if (!list || !list_contains(list, bda, equal_BD_ADDR)) {
@@ -550,9 +550,9 @@ static void connect_cb(int conn_id, int status, int client_if,
 
 	BTT_LOG_D("Callback_GC Connect");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_CONNECT;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_CONNECT;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_connect)
-				- sizeof(struct btt_gatt_client_cb_hdr);
+				- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	btt_cb.client_if = client_if;
@@ -571,9 +571,9 @@ static void disconnect_cb(int conn_id, int status, int client_if,
 
 	BTT_LOG_D("Callback_GC Disconnect");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_DISCONNECT;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_DISCONNECT;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_disconnect)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	btt_cb.client_if = client_if;
@@ -591,9 +591,9 @@ static void search_complete_cb(int conn_id, int status)
 
 	BTT_LOG_D("Callback_GC Search Complete");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_SEARCH_COMPLETE;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_SEARCH_COMPLETE;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_search_complete)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
@@ -609,9 +609,9 @@ static void search_result_cb(int conn_id, btgatt_srvc_id_t *srvc_id)
 
 	BTT_LOG_D("Callback_GC Search Result");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_SEARCH_RESULT;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_SEARCH_RESULT;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_search_result)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.srvc_id = *srvc_id;
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
@@ -629,9 +629,9 @@ static void get_characteristic_cb(int conn_id, int status,
 
 	BTT_LOG_D("Callback_GC Get Charakteristic");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_GET_CHARACTERISTIC;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_GET_CHARACTERISTIC;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_get_characteristic)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	btt_cb.srvc_id = *srvc_id;
@@ -651,9 +651,9 @@ static void get_descriptor_cb(int conn_id, int status, btgatt_srvc_id_t
 
 	BTT_LOG_D("Callback_GC Get Descriptor");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_GET_DESCRIPTOR;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_GET_DESCRIPTOR;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_get_descriptor)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	btt_cb.srvc_id = *srvc_id;
@@ -674,9 +674,9 @@ static void get_included_service_cb(int conn_id, int status,
 
 	BTT_LOG_D("Callback_GC Get Included Service");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_GET_INCLUDED_SERVICE;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_GET_INCLUDED_SERVICE;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_get_included_service)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.srvc_id = *srvc_id;
 	btt_cb.incl_srvc_id = *incl_srvc_id;
@@ -694,9 +694,9 @@ static void register_for_notification_cb(int conn_id, int registered,
 
 	BTT_LOG_D("Callback_GC Get Register For Notification");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_REGISTER_FOR_NOTIFICATION;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_REGISTER_FOR_NOTIFICATION;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_reg_for_notification)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.registered = registered;
 	btt_cb.status = status;
@@ -715,9 +715,9 @@ static void notify_cb(int conn_id, btgatt_notify_params_t *p_data)
 
 	BTT_LOG_D("Callback_GC Notify");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_NOTIFY;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_NOTIFY;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_notify)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.p_data = *p_data;
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
@@ -734,9 +734,9 @@ static void read_characteristic_cb(int conn_id, int status,
 
 	BTT_LOG_D("Callback_GC Read Charakteristic");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_READ_CHARACTERISTIC;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_READ_CHARACTERISTIC;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_read_characteristic)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	btt_cb.p_data = *p_data;
@@ -754,9 +754,9 @@ static void write_characteristic_cb(int conn_id, int status,
 
 	BTT_LOG_D("Callback_GC Write Charakteristic");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_WRITE_CHARACTERISTIC;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_WRITE_CHARACTERISTIC;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_write_characteristic)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	btt_cb.p_data = *p_data;
@@ -773,9 +773,9 @@ static void execute_write_cb(int conn_id, int status)
 
 	BTT_LOG_D("Callback_GC Execute Write");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_EXECUTE_WRITE;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_EXECUTE_WRITE;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_execute_write)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));
@@ -792,9 +792,9 @@ static void read_descriptor_cb(int conn_id, int status,
 
 	BTT_LOG_D("Callback_GC Read Descriptor");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_READ_DESCRIPTOR;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_READ_DESCRIPTOR;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_read_descriptor)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	btt_cb.p_data = *p_data;
@@ -812,9 +812,9 @@ static void write_descriptor_cb(int conn_id, int status,
 
 	BTT_LOG_D("Callback_GC Write Descriptor");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_WRITE_DESCRIPTOR;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_WRITE_DESCRIPTOR;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_write_descriptor)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.conn_id = conn_id;
 	btt_cb.status = status;
 	btt_cb.p_data = *p_data;
@@ -832,9 +832,9 @@ static void read_remote_rssi_cb(int client_if, bt_bdaddr_t* bda,
 
 	BTT_LOG_D("Callback_GC Read Remote RSSI");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_READ_REMOTE_RSSI;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_READ_REMOTE_RSSI;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_read_remote_rssi)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.rssi = rssi;
 	btt_cb.status = status;
 	btt_cb.client_if = client_if;
@@ -852,9 +852,9 @@ static void listen_cb(int status, int server_if)
 
 	BTT_LOG_D("Callback_GC Listen");
 
-	btt_cb.hdr.type = BTT_GATT_CLIENT_CB_LISTEN;
+	btt_cb.hdr.command = BTT_GATT_CLIENT_CB_LISTEN;
 	btt_cb.hdr.length = sizeof(struct btt_gatt_client_cb_listen)
-			- sizeof(struct btt_gatt_client_cb_hdr);
+			- sizeof(struct btt_message);
 	btt_cb.status = status;
 	btt_cb.server_if = server_if;
 	BTT_LOG_E("%d\n", fcntl(socket_remote, F_GETFL));

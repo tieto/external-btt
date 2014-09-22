@@ -89,7 +89,7 @@ static void process_request(enum reguest_type_t type, void *data)
 	struct sockaddr_un server;
 	struct btt_message msg;
 	struct timeval     tv;
-	struct btt_cb_hdr  btt_cb;
+	struct btt_message  btt_cb;
 	char *buffer;
 
 	errno = 0;
@@ -258,7 +258,7 @@ static void process_request(enum reguest_type_t type, void *data)
 		/* here we receive all messages on the socket. But only requested
 		 * messages are printed (i.e. type == BTT_REQ_AGENT)
 		 */
-		switch (btt_cb.type) {
+		switch (btt_cb.command) {
 		case BTT_ADAPTER_PIN_REQUEST: {
 			struct btt_cb_adapter_pin_request pin_req;
 

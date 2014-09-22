@@ -42,23 +42,6 @@ enum btt_gatt_server_req_t {
 	BTT_GATT_SERVER_REQ_END
 };
 
-enum btt_gatt_server_cb_t {
-	BTT_GATT_SERVER_CB_REGISTER_SERVER = 2000,
-	BTT_GATT_SERVER_CB_CONNECT,
-	BTT_GATT_SERVER_CB_ADD_SERVICE,
-	BTT_GATT_SERVER_CB_ADD_INCLUDED_SERVICE,
-	BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC,
-	BTT_GATT_SERVER_CB_ADD_DESCRIPTOR,
-	BTT_GATT_SERVER_CB_START_SERVICE,
-	BTT_GATT_SERVER_CB_STOP_SERVICE,
-	BTT_GATT_SERVER_CB_DELETE_SERVICE,
-	BTT_GATT_SERVER_CB_REQUEST_READ,
-	BTT_GATT_SERVER_CB_REQUEST_WRITE,
-	BTT_GATT_SERVER_CB_REQUEST_EXEC_WRITE,
-	BTT_GATT_SERVER_CB_RESPONSE_CONFIRMATION,
-	BTT_GATT_SERVER_CB_END
-};
-
 struct btt_gatt_server_reg {
 	struct btt_message hdr;
 
@@ -166,14 +149,8 @@ struct btt_gatt_server_send_response {
 
 /* Structures for callbacks */
 
-struct btt_gatt_server_cb_hdr {
-	enum btt_gatt_server_cb_t type;
-
-	uint16_t length;
-};
-
 struct btt_gatt_server_cb_reg_result {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int server_if;
@@ -181,7 +158,7 @@ struct btt_gatt_server_cb_reg_result {
 };
 
 struct btt_gatt_server_cb_connect {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int server_if;
@@ -190,7 +167,7 @@ struct btt_gatt_server_cb_connect {
 };
 
 struct btt_gatt_server_cb_add_service {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int server_if;
@@ -199,7 +176,7 @@ struct btt_gatt_server_cb_add_service {
 };
 
 struct btt_gatt_server_cb_add_included_srvc {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int server_if;
@@ -208,7 +185,7 @@ struct btt_gatt_server_cb_add_included_srvc {
 };
 
 struct btt_gatt_server_cb_add_characteristic {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int server_if;
@@ -218,7 +195,7 @@ struct btt_gatt_server_cb_add_characteristic {
 };
 
 struct btt_gatt_server_cb_add_descriptor {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int server_if;
@@ -228,7 +205,7 @@ struct btt_gatt_server_cb_add_descriptor {
 };
 
 struct btt_gatt_server_cb_start_service {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int server_if;
@@ -236,7 +213,7 @@ struct btt_gatt_server_cb_start_service {
 };
 
 struct btt_gatt_server_cb_stop_service {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int server_if;
@@ -244,7 +221,7 @@ struct btt_gatt_server_cb_stop_service {
 };
 
 struct btt_gatt_server_cb_delete_service {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int server_if;
@@ -252,13 +229,13 @@ struct btt_gatt_server_cb_delete_service {
 };
 
 struct btt_gatt_server_cb_status {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 };
 
 struct btt_gatt_server_cb_request_read {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int trans_id;
@@ -269,7 +246,7 @@ struct btt_gatt_server_cb_request_read {
 };
 
 struct btt_gatt_server_cb_request_write {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int trans_id;
@@ -283,7 +260,7 @@ struct btt_gatt_server_cb_request_write {
 };
 
 struct btt_gatt_server_cb_request_exec_write {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int trans_id;
@@ -292,7 +269,7 @@ struct btt_gatt_server_cb_request_exec_write {
 };
 
 struct btt_gatt_server_cb_response_confirmation {
-	struct btt_gatt_server_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int handle;

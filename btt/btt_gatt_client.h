@@ -250,39 +250,8 @@ struct btt_gatt_client_test_command {
 	uint16_t u5;
 };
 
-enum btt_gatt_client_cb_t {
-	/*TODO: better number */
-	BTT_GATT_CLIENT_CB_REGISTER_CLIENT = 2000,
-	BTT_GATT_CLIENT_CB_SCAN_RESULT,
-	BTT_GATT_CLIENT_CB_CONNECT,
-	BTT_GATT_CLIENT_CB_DISCONNECT,
-	BTT_GATT_CLIENT_CB_SEARCH_COMPLETE,
-	BTT_GATT_CLIENT_CB_SEARCH_RESULT,
-	BTT_GATT_CLIENT_CB_GET_CHARACTERISTIC,
-	BTT_GATT_CLIENT_CB_GET_DESCRIPTOR,
-	BTT_GATT_CLIENT_CB_GET_INCLUDED_SERVICE,
-	BTT_GATT_CLIENT_CB_REGISTER_FOR_NOTIFICATION,
-	BTT_GATT_CLIENT_CB_NOTIFY,
-	BTT_GATT_CLIENT_CB_READ_CHARACTERISTIC,
-	BTT_GATT_CLIENT_CB_WRITE_CHARACTERISTIC,
-	BTT_GATT_CLIENT_CB_EXECUTE_WRITE,
-	BTT_GATT_CLIENT_CB_READ_DESCRIPTOR,
-	BTT_GATT_CLIENT_CB_WRITE_DESCRIPTOR,
-	BTT_GATT_CLIENT_CB_READ_REMOTE_RSSI,
-	BTT_GATT_CLIENT_CB_LISTEN,
-	BTT_GATT_CLIENT_CB_BT_STATUS,
-	BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE,
-	BTT_GATT_CLIENT_CB_END
-};
-
-struct btt_gatt_client_cb_hdr {
-	enum btt_gatt_client_cb_t type;
-
-	uint16_t length;
-};
-
 struct btt_gatt_client_cb_scan_result {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	uint8_t bd_addr[BD_ADDR_LEN];
 	char name[NAME_MAX_LEN];
@@ -301,7 +270,7 @@ static const char *discoverable_mode[3] = {
 };
 
 struct btt_gatt_client_cb_register_client {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int status;
 	int client_if;
@@ -309,13 +278,13 @@ struct btt_gatt_client_cb_register_client {
 };
 
 struct btt_gatt_client_cb_bt_status {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	bt_status_t status;
 };
 
 struct btt_gatt_client_cb_connect {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
@@ -324,7 +293,7 @@ struct btt_gatt_client_cb_connect {
 };
 
 struct btt_gatt_client_cb_disconnect {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
@@ -333,7 +302,7 @@ struct btt_gatt_client_cb_disconnect {
 };
 
 struct btt_gatt_client_cb_read_remote_rssi {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int client_if;
 	bt_bdaddr_t addr;
@@ -342,34 +311,34 @@ struct btt_gatt_client_cb_read_remote_rssi {
 };
 
 struct btt_gatt_client_cb_listen {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int server_if;
 	int status;
 };
 
 struct btt_gatt_client_cb_get_device_type {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int type;
 };
 
 struct btt_gatt_client_cb_search_result {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	 int conn_id;
 	 btgatt_srvc_id_t srvc_id;
 };
 
 struct btt_gatt_client_cb_search_complete {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
 };
 
 struct btt_gatt_client_cb_get_included_service {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
@@ -387,7 +356,7 @@ struct btt_gatt_client_cb_get_included_service {
 #define GATT_CHAR_PROP_BIT_EXT_PROP (1 << 7)
 
 struct btt_gatt_client_cb_get_characteristic {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
@@ -397,7 +366,7 @@ struct btt_gatt_client_cb_get_characteristic {
 };
 
 struct btt_gatt_client_cb_get_descriptor {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
@@ -407,7 +376,7 @@ struct btt_gatt_client_cb_get_descriptor {
 };
 
 struct btt_gatt_client_cb_read_characteristic {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
@@ -415,7 +384,7 @@ struct btt_gatt_client_cb_read_characteristic {
 };
 
 struct btt_gatt_client_cb_read_descriptor {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
@@ -423,7 +392,7 @@ struct btt_gatt_client_cb_read_descriptor {
 };
 
 struct btt_gatt_client_cb_write_characteristic {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
@@ -431,14 +400,14 @@ struct btt_gatt_client_cb_write_characteristic {
 };
 
 struct btt_gatt_client_cb_execute_write {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
 };
 
 struct btt_gatt_client_cb_write_descriptor {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int status;
@@ -446,7 +415,7 @@ struct btt_gatt_client_cb_write_descriptor {
 };
 
 struct btt_gatt_client_cb_reg_for_notification {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	int registered;
@@ -456,7 +425,7 @@ struct btt_gatt_client_cb_reg_for_notification {
 };
 
 struct btt_gatt_client_cb_notify {
-	struct btt_gatt_client_cb_hdr hdr;
+	struct btt_message hdr;
 
 	int conn_id;
 	btgatt_notify_params_t p_data;
