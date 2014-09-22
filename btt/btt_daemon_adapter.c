@@ -15,6 +15,7 @@
  */
 
 #include "btt.h"
+#include "btt_utils.h"
 #include "btt_adapter.h"
 
 extern const bt_interface_t *bluetooth_if;
@@ -106,8 +107,7 @@ static void btt_cb_adapter_state_changed(bt_state_t state)
 
 	BTT_LOG_I("Callback Adapter State Changed");
 
-	btt_cb.hdr.command   = BTT_ADAPTER_STATE_CHANGED;
-	btt_cb.hdr.length = sizeof(bool);
+	FILL_HDR(btt_cb, BTT_ADAPTER_STATE_CHANGED);
 
 	if (state == BT_STATE_OFF)
 		btt_cb.state = false;
@@ -179,8 +179,7 @@ static void btt_cb_adapter_properties(bt_status_t status,
 
 			BTT_LOG_I("Callback Adapter Scan Mode");
 
-			btt_cb.hdr.command   = BTT_ADAPTER_SCAN_MODE_CHANGED;
-			btt_cb.hdr.length = sizeof(unsigned int);
+			FILL_HDR(btt_cb, BTT_ADAPTER_SCAN_MODE_CHANGED);
 
 			switch (*scan_mode) {
 			case BT_SCAN_MODE_NONE:
@@ -225,9 +224,7 @@ static void btt_cb_device_found(int num_properties, bt_property_t *properties)
 	struct btt_cb_adapter_device_found btt_cb;
 
 	memset(&btt_cb, 0, sizeof(btt_cb));
-	btt_cb.hdr.command   = BTT_ADAPTER_DEVICE_FOUND;
-	btt_cb.hdr.length = sizeof(struct btt_cb_adapter_device_found) -
-			sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_ADAPTER_DEVICE_FOUND);
 
 	BTT_LOG_I("Callback Device Found Properties");
 
@@ -264,8 +261,7 @@ static void btt_cb_discovery_state_changed(bt_discovery_state_t state)
 {
 	struct btt_cb_adapter_discovery btt_cb;
 
-	btt_cb.hdr.command   = BTT_ADAPTER_DISCOVERY;
-	btt_cb.hdr.length = sizeof(bool);
+	FILL_HDR(btt_cb, BTT_ADAPTER_DISCOVERY);
 
 	BTT_LOG_I("Callback Discovery State Changed");
 
@@ -290,10 +286,7 @@ static void btt_cb_pin_request(bt_bdaddr_t *remote_bd_addr,
 
 	BTT_LOG_I("Callback Pin Request");
 
-	btt_cb.hdr.command   = BTT_ADAPTER_PIN_REQUEST;
-	btt_cb.hdr.length = sizeof(struct btt_cb_adapter_pin_request) -
-			sizeof(struct btt_message);
-
+	FILL_HDR(btt_cb, BTT_ADAPTER_PIN_REQUEST);
 	btt_cb.cod = cod;
 	memcpy(btt_cb.bd_addr, remote_bd_addr->address, BD_ADDR_LEN);
 	strcpy(btt_cb.name, (char *)bd_name->name);
@@ -312,9 +305,7 @@ static void btt_cb_ssp_request(bt_bdaddr_t *remote_bd_addr,
 
 	BTT_LOG_I("Callback SSP Request");
 
-	btt_cb.hdr.command   = BTT_ADAPTER_SSP_REQUEST;
-	btt_cb.hdr.length = sizeof(struct btt_cb_adapter_ssp_request) -
-			sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_ADAPTER_SSP_REQUEST);
 	btt_cb.cod     = cod;
 	btt_cb.passkey = pass_key;
 
@@ -344,7 +335,7 @@ static void btt_cb_bond_state_changed(bt_status_t status,
 
 	BTT_LOG_I("Callback Bond State Changed");
 
-	btt_cb.hdr.command = BTT_ADAPTER_BOND_STATE_CHANGED;
+	FILL_HDR(btt_cb, BTT_ADAPTER_BOND_STATE_CHANGED);
 	btt_cb.status   = status;
 	btt_cb.state    = state;
 	memcpy(btt_cb.bd_addr, remote_bd_addr->address, BD_ADDR_LEN);

@@ -54,8 +54,8 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
+		FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_END);
 		btt_cb.status = gatt_server_if->unregister_server(msg.server_if);
-		btt_cb.hdr.command = BTT_GATT_SERVER_CB_END;
 
 		if (send(socket_remote, &btt_cb,
 				sizeof(struct btt_gatt_server_cb_status), 0) == -1)
@@ -199,7 +199,8 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		btt_cb.status = gatt_server_if->send_indication(msg.server_if, msg.attribute_handle,
 				msg.conn_id, msg.len, msg.confirm, &msg.p_value[0]);
-		btt_cb.hdr.command = BTT_GATT_SERVER_CB_END;
+
+		FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_END);
 
 		if (send(socket_remote, &btt_cb,
 				sizeof(struct btt_gatt_server_cb_status), 0) == -1)
@@ -233,9 +234,7 @@ static void register_server_cb(int status, int server_if, bt_uuid_t *app_uuid)
 {
 	struct btt_gatt_server_cb_reg_result btt_cb;
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_REGISTER_SERVER;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_reg_result)
-			- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_REGISTER_SERVER);
 	btt_cb.status = status;
 	btt_cb.server_if = server_if;
 	memcpy(&btt_cb.app_uuid, app_uuid, sizeof(bt_uuid_t));
@@ -254,9 +253,7 @@ static void connect_cb(int conn_id, int server_if, int connected,
 
 	BTT_LOG_D("Callback_GS Connect");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_CONNECT;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_connect)
-			- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_CONNECT);
 	btt_cb.conn_id = conn_id;
 	btt_cb.server_if = server_if;
 	memcpy(&btt_cb.bda, bda, sizeof(bt_bdaddr_t));
@@ -273,9 +270,7 @@ static void add_service_cb(int status, int server_if,
 
 	BTT_LOG_D("Callback GS Add Service");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_ADD_SERVICE;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_add_service)
-			- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_ADD_SERVICE);
 	btt_cb.status = status;
 	btt_cb.server_if = server_if;
 	memcpy(&btt_cb.srvc_id, srvc_id, sizeof(btgatt_srvc_id_t));
@@ -292,9 +287,7 @@ static void add_included_srvc_cb(int status, int server_if, int srvc_handle, int
 
 	BTT_LOG_D("Callback GS Add Included Service");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_ADD_INCLUDED_SERVICE;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_add_included_srvc)
-			- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_ADD_INCLUDED_SERVICE);
 	btt_cb.status = status;
 	btt_cb.server_if = server_if;
 	btt_cb.srvc_handle = srvc_handle;
@@ -312,9 +305,7 @@ static void add_characteristic_cb(int status, int server_if, bt_uuid_t *uuid,
 
 	BTT_LOG_D("Callback GS Add Characteristic");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_add_characteristic)
-			- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC);
 	btt_cb.status = status;
 	btt_cb.server_if = server_if;
 	memcpy(&btt_cb.uuid, uuid, sizeof(bt_uuid_t));
@@ -333,9 +324,7 @@ static void add_descriptor_cb(int status, int server_if, bt_uuid_t *uuid,
 
 	BTT_LOG_D("Callback GS Add Descriptor");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_ADD_DESCRIPTOR;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_add_descriptor)
-				- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_ADD_DESCRIPTOR);
 	btt_cb.status = status;
 	btt_cb.server_if = server_if;
 	memcpy(&btt_cb.uuid, uuid, sizeof(bt_uuid_t));
@@ -353,9 +342,7 @@ static void start_service_cb(int status, int server_if, int srvc_handle)
 
 	BTT_LOG_D("Callback GS Start Service");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_START_SERVICE;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_start_service)
-				- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_START_SERVICE);
 	btt_cb.status = status;
 	btt_cb.server_if = server_if;
 	btt_cb.srvc_handle = srvc_handle;
@@ -371,9 +358,7 @@ static void stop_service_cb(int status, int server_if, int srvc_handle)
 
 	BTT_LOG_D("Callback GS Stop Service");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_STOP_SERVICE;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_stop_service)
-				- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_STOP_SERVICE);
 	btt_cb.status = status;
 	btt_cb.server_if = server_if;
 	btt_cb.srvc_handle = srvc_handle;
@@ -389,9 +374,7 @@ static void delete_service_cb(int status, int server_if, int srvc_handle)
 
 	BTT_LOG_D("Callback GS Delete Service");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_DELETE_SERVICE;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_delete_service)
-				- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_DELETE_SERVICE);
 	btt_cb.status = status;
 	btt_cb.server_if = server_if;
 	btt_cb.srvc_handle = srvc_handle;
@@ -408,9 +391,7 @@ static void request_read_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
 
 	BTT_LOG_D("Callback GS Request Read");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_REQUEST_READ;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_request_read)
-				- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_REQUEST_READ);
 	btt_cb.conn_id = conn_id;
 	btt_cb.trans_id = trans_id;
 	memcpy(&btt_cb.bda, bda, sizeof(bt_bdaddr_t));
@@ -431,9 +412,7 @@ static void request_write_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
 
 	BTT_LOG_D("Callback GS Request Write");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_REQUEST_WRITE;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_request_write)
-				- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_REQUEST_WRITE);
 	btt_cb.conn_id = conn_id;
 	btt_cb.trans_id = trans_id;
 	memcpy(&btt_cb.bda, bda, sizeof(bt_bdaddr_t));
@@ -456,9 +435,7 @@ static void request_exec_write_cb(int conn_id, int trans_id, bt_bdaddr_t *bda,
 
 	BTT_LOG_D("Callback GS Request Execute Write");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_REQUEST_EXEC_WRITE;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_request_exec_write)
-				- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_REQUEST_EXEC_WRITE);
 	btt_cb.conn_id = conn_id;
 	btt_cb.trans_id = trans_id;
 	memcpy(&btt_cb.bda, bda, sizeof(bt_bdaddr_t));
@@ -475,9 +452,7 @@ static void response_confirmation_cb(int status, int handle)
 
 	BTT_LOG_D("Callback GS Response Confirmation");
 
-	btt_cb.hdr.command = BTT_GATT_SERVER_CB_RESPONSE_CONFIRMATION;
-	btt_cb.hdr.length = sizeof(struct btt_gatt_server_cb_response_confirmation)
-				- sizeof(struct btt_message);
+	FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_RESPONSE_CONFIRMATION);
 	btt_cb.status = status;
 	btt_cb.handle = handle;
 
