@@ -19,6 +19,36 @@
 #endif
 #define BTT_ADAPTER_H
 
+struct btt_msg_cmd_adapter_scan_mode {
+	struct btt_message hdr;
+
+	unsigned int mode;
+};
+
+struct btt_msg_cmd_adapter_pair {
+	struct btt_message hdr;
+
+	uint8_t addr[BD_ADDR_LEN];
+};
+
+struct btt_msg_cmd_ssp {
+	struct btt_message hdr;
+
+	unsigned int accept;
+	uint8_t      addr[BD_ADDR_LEN];
+	unsigned int passkey;
+	int          variant;
+};
+
+struct btt_msg_cmd_pin {
+	struct btt_message hdr;
+
+	uint8_t pin_code[PIN_CODE_MAX_LEN];
+	uint8_t addr[BD_ADDR_LEN];
+	uint8_t pin_len;
+	uint8_t accept;
+};
+
 struct btt_cb_adapter_pin_request {
 	struct btt_message hdr;
 
