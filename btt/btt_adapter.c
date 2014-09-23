@@ -24,7 +24,8 @@ enum reguest_type_t {
 	BTT_REQ_UP,
 	BTT_REQ_DOWN,
 	BTT_REQ_SCAN,
-	BTT_REQ_AGENT,
+	BTT_REQ_SSP_REPLY,
+	BTT_REQ_PIN_REPLY,
 	BTT_REQ_SCAN_MODE,
 	BTT_REQ_PAIR,
 	BTT_REQ_UNPAIR
@@ -41,9 +42,10 @@ static void run_adapter_scan_mode(int argc, char **argv);
 static void run_adapter_name(int argc, char **argv);
 static void run_adapter_address(int argc, char **argv);
 static void run_adapter_scan(int argc, char **argv);
-static void run_adapter_agent(int argc, char **argv);
 static void run_adapter_pair(int argc, char **argv);
 static void run_adapter_unpair(int argc, char **argv);
+static void run_adapter_ssp_reply(int argc, char **argv);
+static void run_adapter_pin_reply(int argc, char **argv);
 
 static const struct extended_command adapter_commands[] = {
 		{{ "help",                   "",                                           run_adapter_help           }, 1, MAX_ARGC},
@@ -53,7 +55,8 @@ static const struct extended_command adapter_commands[] = {
 		{{ "name",                   "",                                           run_adapter_name           }, 1, 1},
 		{{ "address",                "",                                           run_adapter_address        }, 1, 1},
 		{{ "scan",                   "",                                           run_adapter_scan           }, 1, 1},
-		{{ "agent",                  "",                                           run_adapter_agent          }, 1, 1},
+		{{ "SSP_reply",              "<accept> <BD_ADDR> <passkey> <variant>",     run_adapter_ssp_reply      }, 5, 5},
+		{{ "PIN_reply",              "<accept> <pin code> <BD_ADDR>",              run_adapter_pin_reply      }, 4, 4},
 		{{ "pair",                   "<BD_ADDR>",                                  run_adapter_pair           }, 2, 2},
 		{{ "unpair",                 "NOT IMPLEMENTED YET <BD_ADDR>",              NULL                       }, 2, 2},
 		{{ "simple_pairing",         "NOT IMPLEMENTED YET [on | off]",             NULL                       }, 1, 2},
@@ -97,12 +100,7 @@ static void process_request(enum reguest_type_t type, void *data)
 		return;
 
 	server.sun_family = AF_UNIX;
-	/*Agent connects to AGENT_SOCK_PATH, rest of clients to SOCK_PATH*/
-	if (type == BTT_REQ_AGENT)
-		strcpy(server.sun_path, AGENT_SOCK_PATH);
-	else
-		strcpy(server.sun_path, SOCK_PATH);
-
+	strcpy(server.sun_path, SOCK_PATH);
 	len = strlen(server.sun_path) + sizeof(server.sun_family);
 
 	if (connect(server_sock, (struct sockaddr *)&server, len) == -1) {
@@ -181,9 +179,44 @@ static void process_request(enum reguest_type_t type, void *data)
 			return;
 		}
 		break;
-	case BTT_REQ_AGENT:
-		BTT_LOG_S("Waiting for the pairing request from the remote device\n");
+	case BTT_REQ_SSP_REPLY: {
+		struct btt_msg_cmd_ssp *cmd_ssp;
+
+		tv.tv_sec  = 4;
+		tv.tv_usec = 0;
+		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+				(char *)&tv,sizeof(struct timeval));
+
+		FILL_MSG_P(data, cmd_ssp, BTT_RSP_SSP_REPLY);
+
+		if (send(server_sock, (const char *) cmd_ssp,
+				sizeof(struct btt_msg_cmd_ssp)
+				+ cmd_ssp->hdr.length, 0) == -1) {
+			close(server_sock);
+			return;
+		}
+
 		break;
+	}
+	case BTT_REQ_PIN_REPLY: {
+		struct btt_msg_cmd_pin *cmd_pin;
+
+		tv.tv_sec  = 4;
+		tv.tv_usec = 0;
+		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+				(char *) &tv, sizeof(struct timeval));
+
+		FILL_MSG_P(data, cmd_pin, BTT_RSP_PIN_REPLY);
+
+		if (send(server_sock, (const char *) cmd_pin,
+				sizeof(struct btt_msg_cmd_pin)
+				+ cmd_pin->hdr.length, 0) == -1) {
+			close(server_sock);
+			return;
+		}
+
+		break;
+	}
 	case BTT_REQ_SCAN_MODE: {
 		struct btt_msg_cmd_adapter_scan_mode cmd_scan;
 
@@ -261,97 +294,35 @@ static void process_request(enum reguest_type_t type, void *data)
 		case BTT_ADAPTER_PIN_REQUEST: {
 			struct btt_cb_adapter_pin_request pin_req;
 
-			BTT_LOG_S("\n***Pairing Request***\n\n");
+			BTT_LOG_S("\nPIN request\n\n");
+
 			recv(server_sock, &pin_req, sizeof(pin_req), 0);
 
-			if (type == BTT_REQ_AGENT) {
-				struct btt_msg_cmd_agent_pin cmd_rsp;
-				char pin_code[PIN_CODE_MAX_LEN+1] = {0};
+			/* application can receive this callback asynchronously,
+			 * so type condition is removed */
+			BTT_LOG_S("COD: %u \n", pin_req.cod);
+			BTT_LOG_S("Name: %s\n", pin_req.name);
+			print_bdaddr(pin_req.bd_addr);
+			BTT_LOG_S("\n");
 
-				FILL_HDR(cmd_rsp, BTT_RSP_AGENT_PIN_REPLY);
-
-				memcpy(cmd_rsp.addr, pin_req.bd_addr, BD_ADDR_LEN);
-				cmd_rsp.pin_len = 0;
-				memset(cmd_rsp.pin_code, 0, PIN_CODE_MAX_LEN);
-				cmd_rsp.accept = FALSE;
-
-				BTT_LOG_S("%s\n", pin_req.name);
-				print_bdaddr(cmd_rsp.addr);
-				BTT_LOG_S("\nInput Pin Code:\n");
-
-				scanf("%16s", pin_code);
-				if (pin_code[0] != 0) {
-					cmd_rsp.pin_len = strlen(pin_code);
-					memcpy(cmd_rsp.pin_code, pin_code, cmd_rsp.pin_len);
-					cmd_rsp.accept = TRUE;
-				}
-
-				if (send(server_sock, (const char *)&cmd_rsp,
-						sizeof(cmd_rsp), 0) == -1) {
-					close(server_sock);
-					return;
-				}
-			}
 			break;
 		}
 		case BTT_ADAPTER_SSP_REQUEST: {
 			struct btt_cb_adapter_ssp_request ssp_request;
 
-			BTT_LOG_S("\n***Pairing Request***\n\n");
+			BTT_LOG_S("\nSSP request\n\n");
+
 			recv(server_sock, &ssp_request, sizeof(ssp_request), 0);
 
-			if (type == BTT_REQ_AGENT || type == BTT_REQ_PAIR) {
-				struct btt_msg_cmd_agent_ssp cmd_rsp;
-				char buf[2] = {0};
+			/* application can receive this callback asynchronously,
+			 * so type condition is removed */
+			BTT_LOG_S("COD: %u \n", ssp_request.cod);
+			BTT_LOG_S("Name: %s\n", ssp_request.name);
+			print_bdaddr(ssp_request.bd_addr);
+			BTT_LOG_S("\n");
+			BTT_LOG_S("Passkey: %u\n", ssp_request.passkey);
+			BTT_LOG_S("Variant: %u\n\n", ssp_request.variant);
 
-				FILL_HDR(cmd_rsp, BTT_RSP_AGENT_SSP_REPLY);
-				memcpy(cmd_rsp.addr, ssp_request.bd_addr, BD_ADDR_LEN);
-				cmd_rsp.variant = ssp_request.variant;
-
-				BTT_LOG_S("%s\n", ssp_request.name);
-				print_bdaddr(cmd_rsp.addr);
-				BTT_LOG_S(
-						"Passkey: %d\n\nType 'Y' to confirm or 'N' to cancel\n",
-						ssp_request.passkey);
-
-				scanf("%1s", buf);
-
-				if (buf[0] != 'Y') {
-					cmd_rsp.accept = 0;
-
-					BTT_LOG_S("Cancel\n");
-				} else {
-					cmd_rsp.accept  = 1;
-					cmd_rsp.passkey = ssp_request.passkey;
-				}
-
-				if (type == BTT_REQ_PAIR) {
-					int agent_sock;
-
-					if ((agent_sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-						return;
-
-					server.sun_family = AF_UNIX;
-					strcpy(server.sun_path, AGENT_SOCK_PATH);
-					len = strlen(server.sun_path) + sizeof(server.sun_family);
-					if (connect(agent_sock,
-							(struct sockaddr *)&server, len) == -1) {
-						close(agent_sock);
-						return;
-					}
-
-					send(agent_sock,
-							(const char *)&cmd_rsp, sizeof(cmd_rsp), 0);
-					close(agent_sock);
-				} else {
-					if (send(server_sock, (const char *)&cmd_rsp,
-							sizeof(cmd_rsp), 0) == -1) {
-						BTT_LOG_S("%s: System Socket Error\n", __FUNCTION__);
-						close(server_sock);
-						return;
-					}
-				}
-			}
 			break;
 		}
 		case BTT_ADAPTER_BOND_STATE_CHANGED: {
@@ -488,9 +459,29 @@ static void run_adapter_scan(int argc, char **argv)
 	process_request(BTT_REQ_SCAN, NULL);
 }
 
-static void run_adapter_agent(int argc, char **argv)
+static void run_adapter_ssp_reply(int argc, char **argv)
 {
-	process_request(BTT_REQ_AGENT, NULL);
+	struct btt_msg_cmd_ssp cmd_rsp;
+
+	sscanf(argv[1], "%u", &cmd_rsp.accept);
+	sscanf_bdaddr(argv[2], cmd_rsp.addr);
+	sscanf(argv[3], "%u", &cmd_rsp.passkey);
+	sscanf(argv[4], "%d", &cmd_rsp.variant);
+
+	process_request(BTT_REQ_SSP_REPLY, &cmd_rsp);
+}
+
+static void run_adapter_pin_reply(int argc, char **argv)
+{
+	struct btt_msg_cmd_pin cmd_rsp;
+	char buff[256];
+
+	sscanf(argv[1], "%"SCNx8"", &cmd_rsp.accept);
+	sscanf(argv[2], "%s", buff);
+	cmd_rsp.pin_len = string_to_hex(buff, cmd_rsp.pin_code);
+	sscanf_bdaddr(argv[3], cmd_rsp.addr);
+
+	process_request(BTT_REQ_PIN_REPLY, &cmd_rsp);
 }
 
 static void run_adapter_name(int argc, char **argv)

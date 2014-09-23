@@ -20,7 +20,6 @@
 
 extern const bt_interface_t *bluetooth_if;
 extern int socket_remote;
-extern int socket_agent;
 
 bool turning_on_adapter = FALSE;
 bool bonding_peer_dev   = FALSE;
@@ -86,6 +85,26 @@ void handle_adapter_cmd(const struct btt_message *btt_msg,
 		recv(socket_remote, &msg, sizeof(msg), 0);
 
 		bluetooth_if->remove_bond((bt_bdaddr_t *)msg.addr);
+		break;
+	}
+	case BTT_RSP_PIN_REPLY: {
+		struct btt_msg_cmd_pin msg;
+
+		recv(socket_remote, &msg, sizeof(msg), 0);
+
+		bluetooth_if->pin_reply((bt_bdaddr_t const *)msg.addr,
+				msg.accept, msg.pin_len,
+				(bt_pin_code_t *)msg.pin_code);
+		break;
+	}
+	case BTT_RSP_SSP_REPLY: {
+		struct btt_msg_cmd_ssp msg;
+
+		recv(socket_remote, &msg, sizeof(msg), 0);
+
+		bluetooth_if->ssp_reply((bt_bdaddr_t const *)msg.addr,
+				(bt_ssp_variant_t)msg.variant,
+				msg.accept, msg.passkey);
 		break;
 	}
 	default:
@@ -291,7 +310,7 @@ static void btt_cb_pin_request(bt_bdaddr_t *remote_bd_addr,
 	memcpy(btt_cb.bd_addr, remote_bd_addr->address, BD_ADDR_LEN);
 	strcpy(btt_cb.name, (char *)bd_name->name);
 
-	if (send(socket_agent, (const char *)&btt_cb,
+	if (send(socket_remote, (const char *)&btt_cb,
 			sizeof(struct btt_cb_adapter_pin_request), 0) == -1) {
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 	}
@@ -315,16 +334,9 @@ static void btt_cb_ssp_request(bt_bdaddr_t *remote_bd_addr,
 
 	btt_cb.variant = pairing_variant;
 
-	if (TRUE == bonding_peer_dev) {
-		if (send(socket_remote, (const char *)&btt_cb,
-				sizeof(struct btt_cb_adapter_ssp_request), 0) == -1) {
-			BTT_LOG_E("%s:System Socket Error 1\n", __FUNCTION__);
-		}
-	} else {
-		if (send(socket_agent, (const char *)&btt_cb,
-				sizeof(struct btt_cb_adapter_ssp_request), 0) == -1) {
-			BTT_LOG_E("%s:System Socket Error 2\n", __FUNCTION__);
-		}
+	if (send(socket_remote, (const char *) &btt_cb,
+			sizeof(struct btt_cb_adapter_ssp_request), 0) == -1) {
+		BTT_LOG_E("%s:System Socket Error 1\n", __FUNCTION__);
 	}
 }
 
@@ -340,19 +352,13 @@ static void btt_cb_bond_state_changed(bt_status_t status,
 	btt_cb.state    = state;
 	memcpy(btt_cb.bd_addr, remote_bd_addr->address, BD_ADDR_LEN);
 
-	if (TRUE == bonding_peer_dev) {
-		if (send(socket_remote, (const char *)&btt_cb,
-				sizeof(struct btt_cb_adapter_bond_state_changed), 0) == -1) {
-			BTT_LOG_E("%s:System Socket Error 1\n", __FUNCTION__);
-		}
-		if (BT_BOND_STATE_BONDED == state)
-			bonding_peer_dev = FALSE;
-	} else {
-		if (send(socket_agent, (const char *)&btt_cb,
-				sizeof(struct btt_cb_adapter_bond_state_changed), 0) == -1) {
-			BTT_LOG_E("%s:System Socket Error 2\n", __FUNCTION__);
-		}
+	if (send(socket_remote, (const char *)&btt_cb,
+			sizeof(struct btt_cb_adapter_bond_state_changed), 0) == -1) {
+		BTT_LOG_E("%s:System Socket Error 1\n", __FUNCTION__);
 	}
+
+	if (BT_BOND_STATE_BONDED == state)
+		bonding_peer_dev = FALSE;
 }
 
 static void btt_cb_acl_state_changed(bt_status_t status,

@@ -46,7 +46,6 @@
 
 #define BTT_DIRECTORY_NAME     ".btt"
 #define BTT_SOCKET_NAME        "btt.socket"
-#define BTT_AGENT_SOCKET_NAME  "btt.agent"
 
 #ifdef ANDROID
 #define BTT_DIRECTORY "/data/"BTT_DIRECTORY_NAME
@@ -79,7 +78,6 @@
 #endif
 
 #define SOCK_PATH BTT_DIRECTORY"/"BTT_SOCKET_NAME
-#define AGENT_SOCK_PATH BTT_DIRECTORY"/"BTT_AGENT_SOCKET_NAME
 #define SUB_CMD_DIVIDER '|'
 
 #define VERSION_MAJOR    0
@@ -151,8 +149,8 @@ enum btt_command {
 	BTT_ADAPTER_CMD_RSP_END,
 
 	BTT_MISC_CMD_RSP_START = 900,
-	BTT_RSP_AGENT_SSP_REPLY,
-	BTT_RSP_AGENT_PIN_REPLY,
+	BTT_RSP_SSP_REPLY,
+	BTT_RSP_PIN_REPLY,
 	BTT_MISC_CMD_RSP_END,
 
 	BTT_GATT_CLIENT_CMD_RSP_START = 1100,
@@ -316,36 +314,6 @@ enum btt_callback {
 #else
 #include <netinet/in.h>
 #endif
-
-struct btt_msg_cmd_adapter_scan_mode {
-	struct btt_message hdr;
-
-	unsigned int mode;
-};
-
-struct btt_msg_cmd_adapter_pair {
-	struct btt_message hdr;
-
-	uint8_t addr[BD_ADDR_LEN];
-};
-
-struct btt_msg_cmd_agent_ssp {
-	struct btt_message hdr;
-
-	unsigned int accept;
-	uint8_t      addr[BD_ADDR_LEN];
-	unsigned int passkey;
-	int          variant;
-};
-
-struct btt_msg_cmd_agent_pin {
-	struct btt_message hdr;
-
-	uint8_t pin_code[PIN_CODE_MAX_LEN];
-	uint8_t addr[BD_ADDR_LEN];
-	uint8_t pin_len;
-	uint8_t accept;
-};
 
 /* strings array for bt_status_t enum
  * if that enum change, this array also should */

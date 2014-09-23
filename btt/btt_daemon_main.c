@@ -30,8 +30,6 @@
 #include "btt_gatt_client.h"
 
 static btgatt_callbacks_t sGattCallbacks;
-static pthread_t callback_thread;
-int socket_agent;
 int socket_remote;
 
 const bt_interface_t *bluetooth_if = NULL;
@@ -111,125 +109,6 @@ static void signal_int(int signum)
 	BTT_LOG_S("Ending...\n");
 
 	run_daemon_stop(0, NULL);
-}
-
-static int stop_listening_thread(struct btt_message *message)
-{
-	struct btt_message btt_msg;
-	struct sockaddr_un server;
-	int                server_socket;
-	unsigned int       len;
-
-	memset(&btt_msg, 0, sizeof(struct btt_message));
-	errno = 0;
-
-	if ((server_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		return -1;
-
-	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, AGENT_SOCK_PATH);
-	len = strlen(server.sun_path) + sizeof(server.sun_family);
-
-	if (connect(server_socket, (struct sockaddr *)&server, len) == -1) {
-		BTT_LOG_S("Can't connect - %s \n", strerror(errno));
-		close(server_socket);
-		return -1;
-	}
-
-	if (send(server_socket, (const char *)message,
-			sizeof(struct btt_message) + message->length, 0) == -1) {
-		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
-		close(server_socket);
-		return -1;
-	}
-
-	len = recv(server_socket, &btt_msg, sizeof(struct btt_message), 0);
-
-	close(server_socket);
-	pthread_join(callback_thread, NULL);
-
-	return 0;
-}
-
-static void *agent_socket_routine(void *arg)
-{
-	struct btt_message btt_message;
-	struct sockaddr_un local;
-	struct sockaddr    remote;
-	socklen_t          len;
-	int                socket_listening_server;
-
-	errno = 0;
-
-	if ((socket_listening_server = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		return NULL;
-
-	local.sun_family = AF_UNIX;
-	strcpy(local.sun_path, AGENT_SOCK_PATH);
-	unlink(local.sun_path);
-	len = strlen(local.sun_path) + sizeof(local.sun_family);
-
-	if (bind(socket_listening_server, (struct sockaddr *)&local, len)) {
-		BTT_LOG_E("DEEP SHIT %s\n", strerror(errno));
-		close(socket_listening_server);
-		pthread_exit(NULL);
-	}
-
-	if (listen(socket_listening_server, 5)) {
-		BTT_LOG_E("HOLY SHIT\n");
-		close(socket_listening_server);
-		pthread_exit(NULL);
-	}
-
-	while (1) {
-		socket_agent = accept(socket_listening_server, &remote, &len);
-
-		len= recv(socket_agent, &btt_message,
-				sizeof(struct btt_message), MSG_PEEK);
-
-		if (len < (int) sizeof(struct btt_message))
-			continue;
-
-		switch (btt_message.command) {
-		case BTT_CMD_DAEMON_STOP:
-			btt_message.command = BTT_RSP_OK;
-			btt_message.length = 0;
-
-			if (send(socket_agent, (const char *)&btt_message,
-					sizeof(struct btt_message), 0) == -1) {
-				BTT_LOG_E("Failed to send response from listening thread, \n");
-			}
-
-			close(socket_agent);
-			close(socket_listening_server);
-			pthread_exit(NULL);
-			break;
-		case BTT_RSP_AGENT_PIN_REPLY: {
-			struct btt_msg_cmd_agent_pin msg;
-
-			recv(socket_agent, &msg, sizeof(msg), 0);
-
-			bluetooth_if->pin_reply((bt_bdaddr_t const *)msg.addr,
-					msg.accept, msg.pin_len,
-					(bt_pin_code_t *)msg.pin_code);
-			break;
-		}
-		case BTT_RSP_AGENT_SSP_REPLY: {
-			struct btt_msg_cmd_agent_ssp msg;
-
-			recv(socket_agent, &msg, sizeof(msg), 0);
-
-			bluetooth_if->ssp_reply((bt_bdaddr_t const *)msg.addr,
-					(bt_ssp_variant_t)msg.variant,
-					msg.accept, msg.passkey);
-			break;
-		}
-		default:
-			break;
-		}
-	}
-
-	return NULL;
 }
 
 #ifndef WITHOUT_STACK
@@ -414,9 +293,6 @@ void run_daemon_start(int argc, char **argv)
 		close(STDERR_FILENO);
 	}
 
-	/*start callback socket before, to receive hal callbacks*/
-	pthread_create(&callback_thread, NULL, agent_socket_routine, NULL);
-
 	socket_server = socket(AF_UNIX , SOCK_STREAM , 0);
 
 	/* we won't catch SIGPIPE errors, we just ignore them
@@ -485,10 +361,6 @@ void run_daemon_start(int argc, char **argv)
 			continue;
 		}
 		case BTT_CMD_DAEMON_STOP:
-			if (stop_listening_thread(&btt_msg)) {
-				BTT_LOG_E("error closing listening thread");
-			}
-
 			if (send(socket_remote, (const char *)&btt_msg,
 					sizeof(struct btt_message), 0) == -1) {
 				BTT_LOG_E("%s:System Socket Error 2\n", __FUNCTION__);
