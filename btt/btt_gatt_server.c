@@ -18,6 +18,8 @@
 #include "btt.h"
 #include "btt_utils.h"
 
+extern int app_socket;
+
 static void run_gatt_server_help(int argc, char **argv);
 static void run_gatt_server_reg(int argc, char **argv);
 static void run_gatt_server_unreg(int argc, char **argv);
@@ -67,7 +69,6 @@ void run_gatt_server_help(int argc, char **argv)
 
 static void process_request(enum btt_gatt_server_req_t type, void *data)
 {
-	int server_sock;
 	unsigned int len;
 	struct sockaddr_un server;
 	struct btt_message msg;
@@ -78,20 +79,6 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 	errno = 0;
 
-	if ((server_sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		return;
-
-	server.sun_family = AF_UNIX;
-
-	strcpy(server.sun_path, SOCK_PATH);
-
-	len = strlen(server.sun_path) + sizeof(server.sun_family);
-
-	if (connect(server_sock, (struct sockaddr *)&server, len) == -1) {
-		close(server_sock);
-		return;
-	}
-
 	switch (type) {
 	case BTT_GATT_SERVER_REQ_END:
 		break;
@@ -101,11 +88,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, register_server, BTT_GATT_SERVER_CMD_REGISTER_SERVER);
 
-		if (send(server_sock, register_server,
-				sizeof(struct btt_gatt_server_reg), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, register_server,
+				sizeof(struct btt_gatt_server_reg), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -116,11 +101,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 		FILL_MSG_P(data, unregister_server,
 				BTT_GATT_SERVER_CMD_UNREGISTER_SERVER);
 
-		if (send(server_sock, unregister_server,
-				sizeof(struct btt_gatt_server_unreg), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, unregister_server,
+				sizeof(struct btt_gatt_server_unreg), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -130,11 +113,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, connect, BTT_GATT_SERVER_CMD_CONNECT);
 
-		if (send(server_sock, connect,
-				sizeof(struct btt_gatt_server_connect), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, connect,
+				sizeof(struct btt_gatt_server_connect), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -144,11 +125,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, disconnect, BTT_GATT_SERVER_CMD_DISCONNECT);
 
-		if (send(server_sock, disconnect,
-				sizeof(struct btt_gatt_server_disconnect), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, disconnect,
+				sizeof(struct btt_gatt_server_disconnect), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -158,11 +137,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, add_service, BTT_GATT_SERVER_CMD_ADD_SERVICE);
 
-		if (send(server_sock, add_service,
-				sizeof(struct btt_gatt_server_add_service), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, add_service,
+				sizeof(struct btt_gatt_server_add_service), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -172,11 +149,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, add, BTT_GATT_SERVER_CMD_ADD_INCLUDED_SERVICE);
 
-		if (send(server_sock, add,
-				sizeof(struct btt_gatt_server_add_included_srvc), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, add,
+				sizeof(struct btt_gatt_server_add_included_srvc), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -186,11 +161,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, add, BTT_GATT_SERVER_CMD_ADD_CHARACTERISTIC);
 
-		if (send(server_sock, add,
-				sizeof(struct btt_gatt_server_add_characteristic), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, add,
+				sizeof(struct btt_gatt_server_add_characteristic), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -200,11 +173,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, add, BTT_GATT_SERVER_CMD_ADD_DESCRIPTOR);
 
-		if (send(server_sock, add,
-				sizeof(struct btt_gatt_server_add_descriptor), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, add,
+				sizeof(struct btt_gatt_server_add_descriptor), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -214,11 +185,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, start, BTT_GATT_SERVER_CMD_START_SERVICE);
 
-		if (send(server_sock, start,
-				sizeof(struct btt_gatt_server_start_service), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, start,
+				sizeof(struct btt_gatt_server_start_service), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -228,11 +197,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, stop_service, BTT_GATT_SERVER_CMD_STOP_SERVICE);
 
-		if (send(server_sock, stop_service,
-				sizeof(struct btt_gatt_server_stop_service), 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, stop_service,
+				sizeof(struct btt_gatt_server_stop_service), 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -242,11 +209,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, delete, BTT_GATT_SERVER_CMD_DELETE_SERVICE);
 
-		if (send(server_sock, delete,
-				sizeof(struct btt_gatt_server_delete_service),0) == -1) {
-			close(server_sock);
+		if (send(app_socket, delete,
+				sizeof(struct btt_gatt_server_delete_service),0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -256,11 +221,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, send_res, BTT_GATT_SERVER_CMD_SEND_RESPONSE);
 
-		if (send(server_sock, send_res,
-				sizeof(struct btt_gatt_server_send_response),0) == -1) {
-			close(server_sock);
+		if (send(app_socket, send_res,
+				sizeof(struct btt_gatt_server_send_response),0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -270,11 +233,9 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 		FILL_MSG_P(data, send_ind, BTT_GATT_SERVER_CMD_SEND_INDICATION);
 
-		if (send(server_sock, send_ind,
-				sizeof(struct btt_gatt_server_send_indication),0) == -1) {
-			close(server_sock);
+		if (send(app_socket, send_ind,
+				sizeof(struct btt_gatt_server_send_indication),0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -285,11 +246,10 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	len = 0;
 
 	while (1) {
-		len = recv(server_sock, &btt_cb, sizeof(btt_cb), MSG_PEEK);
+		len = recv(app_socket, &btt_cb, sizeof(btt_cb), MSG_PEEK);
 
 		if (len == 0 || errno) {
 			BTT_LOG_S("Timeout\n");
-			close(server_sock);
 			return;
 		}
         /* here we receive all messages on the socket. But only requested
@@ -302,7 +262,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb, server_sock)) {
+			if (!RECV(&cb, app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -316,7 +276,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb, server_sock)) {
+			if (!RECV(&cb, app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -336,7 +296,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb,app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -357,7 +317,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb, server_sock)) {
+			if (!RECV(&cb, app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -380,7 +340,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb, server_sock)) {
+			if (!RECV(&cb, app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -401,7 +361,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb, server_sock)) {
+			if (!RECV(&cb, app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -421,7 +381,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb, server_sock)) {
+			if (!RECV(&cb, app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -442,7 +402,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb, server_sock)) {
+			if (!RECV(&cb, app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -461,7 +421,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb,server_sock)) {
+			if (!RECV(&cb,app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -480,7 +440,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb, server_sock)) {
+			if (!RECV(&cb, app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -499,7 +459,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 
 			memset(&cb, 0, sizeof(cb));
 
-			if (!RECV(&cb, server_sock)) {
+			if (!RECV(&cb, app_socket)) {
 				BTT_LOG_S("Error: incorrect size of received structure.\n");
 				return;
 			}
@@ -515,7 +475,7 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 			buffer = malloc(btt_cb.length);
 
 			if (buffer) {
-				recv(server_sock, buffer, btt_cb.length, 0);
+				recv(app_socket, buffer, btt_cb.length, 0);
 				free(buffer);
 			}
 

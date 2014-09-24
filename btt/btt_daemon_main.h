@@ -21,5 +21,4 @@
 
 extern void run_daemon(int argc, char **argv);
 extern int btt_daemon_get_number_of_commands(void);
-extern void btt_daemon_check(void);
 

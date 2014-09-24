@@ -35,6 +35,8 @@ struct btt_req_pair {
 	uint8_t addr[BD_ADDR_LEN];
 };
 
+extern int app_socket;
+
 static void run_adapter_help(int argc, char **argv);
 static void run_adapter_up(int argc, char **argv);
 static void run_adapter_down(int argc, char **argv);
@@ -86,7 +88,6 @@ void run_adapter_help(int argc, char **argv) {
  */
 static void process_request(enum reguest_type_t type, void *data)
 {
-	int server_sock;
 	unsigned int len;
 	struct sockaddr_un server;
 	struct btt_message msg;
@@ -96,105 +97,86 @@ static void process_request(enum reguest_type_t type, void *data)
 
 	errno = 0;
 
-	if ((server_sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		return;
-
-	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, SOCK_PATH);
-	len = strlen(server.sun_path) + sizeof(server.sun_family);
-
-	if (connect(server_sock, (struct sockaddr *)&server, len) == -1) {
-		close(server_sock);
-		return;
-	}
-
 	switch (type) {
 	case BTT_REQ_ADDRESS:
 		tv.tv_sec  = 1;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
 		msg.command = BTT_CMD_ADAPTER_ADDRESS;
 		msg.length  = 0;
-		if (send(server_sock, (const char *)&msg,
-				sizeof(struct btt_message) + msg.length, 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, (const char *)&msg,
+				sizeof(struct btt_message) + msg.length, 0) == -1)
 			return;
-		}
+
 		break;
 	case BTT_REQ_NAME:
 		tv.tv_sec  = 1;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
 		msg.command = BTT_CMD_ADAPTER_NAME;
 		msg.length  = 0;
-		if (send(server_sock, (const char *)&msg,
-				sizeof(struct btt_message) + msg.length, 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, (const char *)&msg,
+				sizeof(struct btt_message) + msg.length, 0) == -1)
 			return;
-		}
+
 		break;
 	case BTT_REQ_UP:
 		tv.tv_sec  = 3;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
 		msg.command = BTT_CMD_ADAPTER_UP;
 		msg.length  = 0;
-		if (send(server_sock, (const char *)&msg,
-				sizeof(struct btt_message) + msg.length, 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, (const char *)&msg,
+				sizeof(struct btt_message) + msg.length, 0) == -1)
 			return;
-		}
+
 		break;
 	case BTT_REQ_DOWN:
 		tv.tv_sec  = 3;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
 		msg.command = BTT_CMD_ADAPTER_DOWN;
 		msg.length  = 0;
-		if (send(server_sock, (const char *)&msg,
-				sizeof(struct btt_message) + msg.length, 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, (const char *)&msg,
+				sizeof(struct btt_message) + msg.length, 0) == -1)
 			return;
-		}
+
 		break;
 	case BTT_REQ_SCAN:
 		tv.tv_sec  = 15;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
 		msg.command = BTT_CMD_ADAPTER_SCAN;
 		msg.length  = 0;
-		if (send(server_sock, (const char *)&msg,
-				sizeof(struct btt_message) + msg.length, 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, (const char *)&msg,
+				sizeof(struct btt_message) + msg.length, 0) == -1)
 			return;
-		}
+
 		break;
 	case BTT_REQ_SSP_REPLY: {
 		struct btt_msg_cmd_ssp *cmd_ssp;
 
 		tv.tv_sec  = 4;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
 		FILL_MSG_P(data, cmd_ssp, BTT_RSP_SSP_REPLY);
 
-		if (send(server_sock, (const char *) cmd_ssp,
+		if (send(app_socket, (const char *) cmd_ssp,
 				sizeof(struct btt_msg_cmd_ssp)
-				+ cmd_ssp->hdr.length, 0) == -1) {
-			close(server_sock);
+				+ cmd_ssp->hdr.length, 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -203,17 +185,15 @@ static void process_request(enum reguest_type_t type, void *data)
 
 		tv.tv_sec  = 4;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *) &tv, sizeof(struct timeval));
 
 		FILL_MSG_P(data, cmd_pin, BTT_RSP_PIN_REPLY);
 
-		if (send(server_sock, (const char *) cmd_pin,
+		if (send(app_socket, (const char *) cmd_pin,
 				sizeof(struct btt_msg_cmd_pin)
-				+ cmd_pin->hdr.length, 0) == -1) {
-			close(server_sock);
+				+ cmd_pin->hdr.length, 0) == -1)
 			return;
-		}
 
 		break;
 	}
@@ -222,17 +202,16 @@ static void process_request(enum reguest_type_t type, void *data)
 
 		tv.tv_sec  = 3;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
 		cmd_scan.mode = *(unsigned int *)data;
 		FILL_HDR(cmd_scan, BTT_CMD_ADAPTER_SCAN_MODE);
 
-		if (send(server_sock, (const char *)&cmd_scan,
-				sizeof(struct btt_message) + cmd_scan.hdr.length, 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, (const char *)&cmd_scan,
+				sizeof(struct btt_message) + cmd_scan.hdr.length, 0) == -1)
 			return;
-		}
+
 		break;
 	}
 	case BTT_REQ_PAIR: {
@@ -241,17 +220,16 @@ static void process_request(enum reguest_type_t type, void *data)
 
 		tv.tv_sec  = 15;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
 		req_pair = (struct btt_req_pair *)data;
 		FILL_HDR(cmd_pair, BTT_CMD_ADAPTER_PAIR);
 		memcpy(cmd_pair.addr, req_pair->addr, sizeof(req_pair->addr));
-		if (send(server_sock, (const char *)&cmd_pair,
-				sizeof(struct btt_message) + cmd_pair.hdr.length, 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, (const char *)&cmd_pair,
+				sizeof(struct btt_message) + cmd_pair.hdr.length, 0) == -1)
 			return;
-		}
+
 		break;
 	}
 	case BTT_REQ_UNPAIR: {
@@ -260,17 +238,16 @@ static void process_request(enum reguest_type_t type, void *data)
 
 		tv.tv_sec  = 15;
 		tv.tv_usec = 0;
-		setsockopt(server_sock, SOL_SOCKET, SO_RCVTIMEO,
+		setsockopt(app_socket, SOL_SOCKET, SO_RCVTIMEO,
 				(char *)&tv,sizeof(struct timeval));
 
 		req_unpair = (struct btt_req_pair *)data;
 		FILL_HDR(cmd_unpair, BTT_CMD_ADAPTER_UNPAIR);
 		memcpy(cmd_unpair.addr, req_unpair->addr, sizeof(req_unpair->addr));
-		if (send(server_sock, (const char *)&cmd_unpair,
-				sizeof(struct btt_message) + cmd_unpair.hdr.length, 0) == -1) {
-			close(server_sock);
+		if (send(app_socket, (const char *)&cmd_unpair,
+				sizeof(struct btt_message) + cmd_unpair.hdr.length, 0) == -1)
 			return;
-		}
+
 		break;
 	}
 	default:
@@ -280,11 +257,10 @@ static void process_request(enum reguest_type_t type, void *data)
 	len = 0;
 
 	while (1) {
-		len = recv(server_sock, &btt_cb, sizeof(btt_cb), MSG_PEEK);
+		len = recv(app_socket, &btt_cb, sizeof(btt_cb), MSG_PEEK);
 
 		if (len == 0 || errno) {
 			BTT_LOG_S("Timeout\n");
-			close(server_sock);
 			return;
 		}
 		/* here we receive all messages on the socket. But only requested
@@ -296,7 +272,7 @@ static void process_request(enum reguest_type_t type, void *data)
 
 			BTT_LOG_S("\nPIN request\n\n");
 
-			recv(server_sock, &pin_req, sizeof(pin_req), 0);
+			recv(app_socket, &pin_req, sizeof(pin_req), 0);
 
 			/* application can receive this callback asynchronously,
 			 * so type condition is removed */
@@ -312,7 +288,7 @@ static void process_request(enum reguest_type_t type, void *data)
 
 			BTT_LOG_S("\nSSP request\n\n");
 
-			recv(server_sock, &ssp_request, sizeof(ssp_request), 0);
+			recv(app_socket, &ssp_request, sizeof(ssp_request), 0);
 
 			/* application can receive this callback asynchronously,
 			 * so type condition is removed */
@@ -328,23 +304,20 @@ static void process_request(enum reguest_type_t type, void *data)
 		case BTT_ADAPTER_BOND_STATE_CHANGED: {
 			struct btt_cb_adapter_bond_state_changed state;
 
-			len = recv(server_sock, &state, sizeof(state), 0);
+			len = recv(app_socket, &state, sizeof(state), 0);
 			if (state.status == BT_STATUS_SUCCESS) {
 				print_bdaddr(state.bd_addr);
 				if (state.state == BT_BOND_STATE_BONDED) {
 					BTT_LOG_S("Bonded successfully\n");
-					close(server_sock);
 					return;
 				} else if (state.state == BT_BOND_STATE_BONDING) {
 					BTT_LOG_S("Bonding\n");
 				} else {
 					BTT_LOG_S("Not bonded\n");
-					close(server_sock);
 					return;
 				}
 			} else {
 				BTT_LOG_S("bt_status_t is %d\n", state.status);
-				close(server_sock);
 				return;
 			}
 			break;
@@ -353,7 +326,7 @@ static void process_request(enum reguest_type_t type, void *data)
 			struct btt_cb_adapter_device_found device;
 
 			memset(&device, 0, sizeof(device));
-			len = recv(server_sock, &device, sizeof(device), 0);
+			len = recv(app_socket, &device, sizeof(device), 0);
 			if (type == BTT_REQ_SCAN) {
 				print_bdaddr(device.bd_addr);
 				BTT_LOG_S("%s\n", device.name);
@@ -363,13 +336,12 @@ static void process_request(enum reguest_type_t type, void *data)
 		case BTT_ADAPTER_DISCOVERY: {
 			struct btt_cb_adapter_discovery discovery;
 
-			len = recv(server_sock, &discovery, sizeof(discovery), 0);
+			len = recv(app_socket, &discovery, sizeof(discovery), 0);
 			if (type == BTT_REQ_SCAN) {
 				if (discovery.state) {
 					BTT_LOG_S("Discovery started\n");
 				} else {
 					BTT_LOG_S("Discovery stopped\n");
-					close(server_sock);
 					return;
 				}
 			}
@@ -378,11 +350,10 @@ static void process_request(enum reguest_type_t type, void *data)
 		case BTT_ADAPTER_ADDRESS: {
 			struct btt_cb_adapter_addr address;
 
-			len = recv(server_sock, &address, sizeof(address), 0);
+			len = recv(app_socket, &address, sizeof(address), 0);
 			if (type == BTT_REQ_ADDRESS) {
 				print_bdaddr(address.bd_addr);
 				BTT_LOG_S("\n");
-				close(server_sock);
 				return;
 			}
 			break;
@@ -390,15 +361,13 @@ static void process_request(enum reguest_type_t type, void *data)
 		case BTT_ADAPTER_STATE_CHANGED: {
 			struct btt_cb_adapter_state state;
 
-			len = recv(server_sock, &state, sizeof(state), 0);
+			len = recv(app_socket, &state, sizeof(state), 0);
 			if (BTT_REQ_UP && state.state) {
 				BTT_LOG_S("Turned on\n");
-				close(server_sock);
 				return;
 			}
 			if (BTT_REQ_DOWN && !state.state) {
-				BTT_LOG_S("Turned off\n");
-				close(server_sock);
+				BTT_LOG_S("Turned off\n");\
 				return;
 			}
 			break;
@@ -406,7 +375,7 @@ static void process_request(enum reguest_type_t type, void *data)
 		case BTT_ADAPTER_SCAN_MODE_CHANGED: {
 			struct btt_cb_adapter_scan_mode_changed scan_mode;
 
-			len = recv(server_sock, &scan_mode, sizeof(scan_mode), 0);
+			len = recv(app_socket, &scan_mode, sizeof(scan_mode), 0);
 			if (type == BTT_REQ_SCAN_MODE) {
 				if (scan_mode.mode == 0) {
 					BTT_LOG_S("Scan mode changed -> NONE\n");
@@ -421,7 +390,6 @@ static void process_request(enum reguest_type_t type, void *data)
 				} else {
 					BTT_LOG_S("WTF\n");
 				}
-				close(server_sock);
 				return;
 			}
 			break;
@@ -430,10 +398,9 @@ static void process_request(enum reguest_type_t type, void *data)
 			struct btt_cb_adapter_name name;
 
 			memset(&name, 0, sizeof(name));
-			len = recv(server_sock, &name, sizeof(name), 0);
+			len = recv(app_socket, &name, sizeof(name), 0);
 			if (type == BTT_REQ_NAME) {
 				BTT_LOG_S("%s\n",name.name);
-				close(server_sock);
 				return;
 			}
 			break;
@@ -441,7 +408,7 @@ static void process_request(enum reguest_type_t type, void *data)
 		default:
 			buffer = malloc(btt_cb.length);
 			if (buffer) {
-				len = recv(server_sock, buffer, btt_cb.length, 0);
+				len = recv(app_socket, buffer, btt_cb.length, 0);
 				free(buffer);
 			}
 			break;

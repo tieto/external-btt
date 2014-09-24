@@ -30,6 +30,8 @@
 static void run_help(int argc, char **argv);
 static void run_exit(int argc, char **argv);
 
+int app_socket = -1;
+
 static struct command commands[] = {
 		{ "help",    "", run_help    },
 		{ "daemon",  "", run_daemon  },
@@ -115,12 +117,14 @@ static void signal_init(void)
 	signal(SIGINT, signal_handler);
 	signal(SIGSEGV, signal_handler);
 	signal(SIGTERM, signal_handler);
+	signal(SIGPIPE, SIG_IGN);
 }
 
 static void run_exit(int argc, char **argv)
 {
 	free_argv(argv, argc + 1);
 	BTT_LOG_S("Bluedroid Test Tool exited. \n\n");
+	close(app_socket);
 	exit(EXIT_SUCCESS);
 }
 
@@ -134,6 +138,7 @@ int main(int argc, char **argv)
 	print_commands(commands, UI_SUPPORTED_COMMANDS);
 
 	signal_init();
+	errno = 0;
 
 	while (true) {
 		printf("> ");
@@ -159,7 +164,17 @@ int main(int argc, char **argv)
 				if (!commands[i].run) {
 					BTT_LOG_S("Not implemented yet");
 				} else {
+					if (app_socket < 0) {
+						BTT_LOG_S("Not connected to daemon.\n");
+						app_socket = connect_to_daemon_socket();
+					}
+
 					commands[i].run(argc2 - 1, argv2);
+
+					if (errno == EPIPE) {
+						app_socket = -1;
+						errno = 0;
+					}
 				}
 				break;
 			}
