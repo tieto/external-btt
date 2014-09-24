@@ -22,7 +22,6 @@
 
 extern void print_commands(const struct command *commands,
 		unsigned int cmds_num);
-extern struct btt_message *btt_send_command(struct btt_message *msg);
 extern void run_generic_extended(const struct extended_command *commands,
 		unsigned int cmds_num, void (*help)(int argc, char **argv),
 		int argc, char **argv);
@@ -55,6 +54,7 @@ extern bool sscanf_UUID_128(char *src, uint8_t *dest, bool invert,
 		bool swap_bytes);
 int get_hexlines_length(int i_arg, int argc, char **argv);
 int hexlines_to_data(int i_arg, int argc, char **argv, unsigned char *data);
+int connect_to_daemon_socket(void);
 
 /* return FALSE if length of received structure is different
  * from expected length */

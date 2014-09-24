@@ -34,7 +34,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_reg\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -50,7 +49,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg,socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_unreg\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -69,7 +67,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg,socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_connect\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -82,7 +79,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg,socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_disconnect\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -95,7 +91,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_add_service\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -108,7 +103,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_add_included_srvc\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -122,7 +116,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg,socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_add_characteristic\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -136,7 +129,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_add_descriptor\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -150,7 +142,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_start_service\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -164,7 +155,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_stop_service\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -177,7 +167,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_delete_service\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -193,7 +182,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_send_indication\n");
-			close(socket_remote);
 			return;
 		}
 
@@ -214,7 +202,6 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_send_response\n");
-			close(socket_remote);
 			return;
 		}
 

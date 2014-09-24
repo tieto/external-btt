@@ -31,6 +31,7 @@
 
 static btgatt_callbacks_t sGattCallbacks;
 int socket_remote;
+extern int app_socket;
 
 const bt_interface_t *bluetooth_if = NULL;
 const btgatt_interface_t *gatt_if = NULL;
@@ -53,11 +54,12 @@ static struct extended_command daemon_commands[] = {
 		{{"help",   "",            run_daemon_help}, 1, 1},
 		{{"start",  "[nodetach]",  run_daemon_start}, 1, 2},
 		{{"stop",   "",            run_daemon_stop}, 1, 1},
-		{{"restart","[nodetach]",  run_daemon_restart}, 1, 2},
-		{{"status", "",            run_daemon_status}, 1, 1}
+		{{"restart","[nodetach]",  run_daemon_restart}, 1, 2}
 };
 
 #define DAEMON_SUPPORTED_COMMANDS sizeof(daemon_commands)/sizeof(struct extended_command)
+#define OK "OK"
+#define ER "ER"
 
 void run_daemon(int argc, char **argv)
 {
@@ -68,40 +70,6 @@ void run_daemon(int argc, char **argv)
 static void run_daemon_help(int argc, char **argv)
 {
 	print_commands_extended(daemon_commands, DAEMON_SUPPORTED_COMMANDS);
-}
-
-void btt_daemon_check(void)
-{
-	struct btt_message msg;
-	struct btt_msg_rsp_daemon_check *rsp;
-
-	msg.command = BTT_CMD_DAEMON_CHECK;
-	msg.length  = 0;
-
-	rsp = (struct btt_msg_rsp_daemon_check *)btt_send_command(&msg);
-	if (!rsp) {
-		BTT_LOG_S("Error: daemon not run\n");
-		return;
-	}
-
-	if (!(rsp->version.major   == VERSION_MAJOR &&
-			rsp->version.minor   == VERSION_MINOR &&
-			rsp->version.release == VERSION_RELEASE &&
-			rsp->version.build   == VERSION_BUILD)) {
-		BTT_LOG_S("Error: incompatible versions: client is: %u.%u.%u (%u), but daemon is: %u.%u.%u (%u)\n",
-				VERSION_MAJOR,
-				VERSION_MINOR,
-				VERSION_RELEASE,
-				VERSION_BUILD,
-				rsp->version.major,
-				rsp->version.minor,
-				rsp->version.release,
-				rsp->version.build);
-		free(rsp);
-		return;
-	}
-
-	free(rsp);
 }
 
 static void signal_int(int signum)
@@ -231,16 +199,19 @@ static void run_daemon_generic_extended(const struct extended_command *commands,
 
 void run_daemon_start(int argc, char **argv)
 {
-	int                 pid;
-	int                 sid;
-	int                 socket_server;
-	struct sockaddr_un  local;
-	struct sockaddr     remote;
-	socklen_t           len;
-	struct btt_message  btt_msg;
+	int pid;
+	int sid;
+	int socket_server;
+	struct sockaddr_un local;
+	struct sockaddr remote;
+	socklen_t len;
+	struct btt_message btt_msg;
 	struct btt_message *btt_rsp;
-	int                 length;
-	bool                nodetach = FALSE;
+	int length;
+	bool nodetach = FALSE;
+	char buff[256];
+	int fd[2];
+	char temp[3];
 
 	if (argc == 2 && strcmp("nodetach", argv[1]) == 0) {
 		nodetach = TRUE;
@@ -252,29 +223,46 @@ void run_daemon_start(int argc, char **argv)
 	btt_msg.command = BTT_CMD_DAEMON_CHECK;
 	btt_msg.length  = 0;
 
-	btt_rsp = btt_send_command(&btt_msg);
-	if (btt_rsp) {
-		BTT_LOG_S("Error: daemon seems to be run\n");
-		free(btt_rsp);
-		return;
-	}
-
-	BTT_LOG_S("Starting BTT daemon...\n");
-
 	if (!nodetach) {
+
+		if (socketpair(PF_UNIX, SOCK_STREAM, 0, fd) == -1) {
+			BTT_LOG_S("Error: Can't pair diagnostic socket.\n");
+					return;
+		}
+
 		pid = fork();
+
 		if (pid < 0) {
 			BTT_LOG_E("Starting BTT daemon: FAIL (1)\n");
 			return;
 		}
 
-		if (pid > 0)
-			return;
+		if (pid > 0) {
+			int stat;
 
+			close(fd[0]);
+			recv(fd[1], temp, 3, MSG_WAITALL);
+
+			if (strncmp(temp, OK, 2)) {
+				wait(&stat);
+				BTT_LOG_S("Daemon start status: error.\n");
+			} else {
+				BTT_LOG_S("Daemon start status: success.\n");
+			}
+
+			close(fd[1]);
+			errno = 0;
+			return;
+		}
+
+		close(fd[1]);
 		sid = setsid();
+
 		if (sid < 0) {
 			BTT_LOG_E("Starting BTT daemon: FAIL (2)\n");
-			return;
+			send(fd[0], ER, 3, 0);
+			close(fd[0]);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -284,7 +272,9 @@ void run_daemon_start(int argc, char **argv)
 
 	if ((chdir("/")) < 0) {
 		BTT_LOG_E("Starting BTT daemon: FAIL (3)\n");
-		return;
+		send(fd[0], ER, 3, 0);
+		close(fd[0]);
+		exit(EXIT_FAILURE);
 	}
 
 	if (!nodetach) {
@@ -302,104 +292,105 @@ void run_daemon_start(int argc, char **argv)
 
 	local.sun_family = AF_UNIX;
 	strcpy(local.sun_path, SOCK_PATH);
-	unlink(local.sun_path);
 	len = strlen(local.sun_path) + sizeof(local.sun_family);
 
 	if (bind(socket_server, (struct sockaddr *)&local, len) == -1) {
 		BTT_LOG_E("Starting BTT daemon: FAIL (4)\n");
 		close(socket_server);
-		return;
+
+		if (!nodetach) {
+			send(fd[0], ER, 3, 0);
+			close(fd[0]);
+		}
+
+		exit(EXIT_FAILURE);
 	}
 
-	if (listen(socket_server, 5) == -1) {
+	if (listen(socket_server, 1) == -1) {
 		BTT_LOG_E("Starting BTT daemon: FAIL (5)\n");
 		close(socket_server);
-		return;
+
+		if (!nodetach) {
+			send(fd[0], ER, 3, 0);
+			close(fd[0]);
+		}
+
+		exit(EXIT_FAILURE);
 	}
 
 	len = sizeof(struct sockaddr_un);
 
 	if (start_bluedroid_hal()) {
 		BTT_LOG_E("Starting BTT daemon: FAIL (6)\n");
-		return;
+
+		if (!nodetach) {
+			send(fd[0], ER, 3, 0);
+			close(fd[0]);
+		}
+
+		exit(EXIT_FAILURE);
 	}
 
 	BTT_LOG_I("Daemon successfully start at pid=%u\n", getpid());
 
+
+	if (!nodetach) {
+		send(fd[0], OK, 3, 0);
+		close(fd[0]);
+	}
+
 	while (1) {
-		BTT_LOG_D("Waiting for btt_message\n");
+		errno = 0;
+		BTT_LOG_D("Waiting for btt_messages\n");
 		socket_remote = accept(socket_server, &remote, &len);
-		BTT_LOG_D("Receving btt_message\n");
-		length        = recv(socket_remote, &btt_msg,
-				sizeof(struct btt_message), MSG_PEEK);
-		if (length < (int) sizeof(struct btt_message)) {
-			BTT_LOG_E("Received invalid btt_message\n");
-			close(socket_remote);
-			continue;
-		}
 
-		BTT_LOG_D("RECEIVE command=%u length=%u\n",
-				btt_msg.command, btt_msg.length);
+		while (1) {
+			BTT_LOG_D("Receving btt_message\n");
 
-		switch (btt_msg.command) {
-		case BTT_CMD_DAEMON_CHECK: {
-			struct btt_msg_rsp_daemon_check btt_rsp;
+			length = (int) recv(socket_remote, &btt_msg,
+					sizeof(struct btt_message), MSG_PEEK);
+			send(socket_remote, NULL, 0, MSG_NOSIGNAL);
 
-			FILL_HDR(btt_rsp, BTT_RSP_DAEMON_CHECK);
+			if (errno == EPIPE)
+				break;
 
-			btt_rsp.version.major   = VERSION_MAJOR;
-			btt_rsp.version.minor   = VERSION_MINOR;
-			btt_rsp.version.release = VERSION_RELEASE;
-			btt_rsp.version.build   = VERSION_BUILD;
-
-			recv(socket_remote, NULL, 0, 0);
-			if (send(socket_remote, (const char *)&btt_rsp,
-					sizeof(struct btt_msg_rsp_daemon_check), 0) == -1) {
-				BTT_LOG_E("%s:System Socket Error 1\n", __FUNCTION__);
-			}
-			close(socket_remote);
-			continue;
-		}
-		case BTT_CMD_DAEMON_STOP:
-			if (send(socket_remote, (const char *)&btt_msg,
-					sizeof(struct btt_message), 0) == -1) {
-				BTT_LOG_E("%s:System Socket Error 2\n", __FUNCTION__);
+			if (length <= 0) {
+				BTT_LOG_E("Received invalid btt_message\n");
+				break;
 			}
 
-			close(socket_remote);
-			close(socket_server);
-			exit(EXIT_SUCCESS);
-		default:
-			break;
-		}
+			BTT_LOG_D("RECEIVE command=%u length=%i\n",
+					btt_msg.command, length);
 
-		/*start to handle different command here.*/
-		if (btt_msg.command > BTT_ADAPTER_CMD_RSP_START &&
-				btt_msg.command < BTT_ADAPTER_CMD_RSP_END) {
-			handle_adapter_cmd(&btt_msg, socket_remote);
-		} else if (btt_msg.command > BTT_GATT_CLIENT_CMD_RSP_START &&
-				btt_msg.command < BTT_GATT_CLIENT_CMD_RSP_END) {
-			list = list_clear(list, free);
-			handle_gatt_client_cmd(&btt_msg, socket_remote);
-		} else if (btt_msg.command > BTT_GATT_SERVER_CMD_RSP_START &&
-				btt_msg.command < BTT_GATT_SERVER_CMD_RSP_END) {
-			handle_gatt_server_cmd(&btt_msg, socket_remote);
-		} else {
-			BTT_LOG_W("Unknown command=%u with length=%u\n",
-					btt_msg.command, btt_msg.length);
-			btt_msg.command = BTT_RSP_ERROR_UNKNOWN_COMMAND;
-			btt_msg.length  = 0;
-			if (send(socket_remote, (const char *)&btt_msg,
-					sizeof(struct btt_message), 0) == -1) {
-				BTT_LOG_E("%s:System Socket Error 4\n", __FUNCTION__);
+			if (btt_msg.command == BTT_CMD_DAEMON_STOP) {
+				close(socket_remote);
+				close(socket_server);
+				exit(EXIT_SUCCESS);
 			}
-			close(socket_remote);
-			continue;
+
+			/*start to handle different command here.*/
+			if (btt_msg.command > BTT_ADAPTER_CMD_RSP_START &&
+					btt_msg.command < BTT_ADAPTER_CMD_RSP_END) {
+				handle_adapter_cmd(&btt_msg, socket_remote);
+			} else if (btt_msg.command > BTT_GATT_CLIENT_CMD_RSP_START &&
+					btt_msg.command < BTT_GATT_CLIENT_CMD_RSP_END) {
+				list = list_clear(list, free);
+				handle_gatt_client_cmd(&btt_msg, socket_remote);
+			} else if (btt_msg.command > BTT_GATT_SERVER_CMD_RSP_START &&
+					btt_msg.command < BTT_GATT_SERVER_CMD_RSP_END) {
+				handle_gatt_server_cmd(&btt_msg, socket_remote);
+			} else {
+				BTT_LOG_W("Unknown command=%u with length=%u\n",
+						btt_msg.command, btt_msg.length);
+				btt_msg.command = BTT_RSP_ERROR_UNKNOWN_COMMAND;
+				btt_msg.length  = 0;
+				if (send(socket_remote, (const char *)&btt_msg,
+						sizeof(struct btt_message), 0) == -1) {
+					BTT_LOG_E("%s:System Socket Error 4\n", __FUNCTION__);
+				}
+				continue;
+			}
 		}
-
-		if (length > 0)
-			recv(socket_remote, NULL, 0, 0);
-
 		/*
 		 * Do NOT close socket here.
 		 * handle_l2cap_cmd(), handle_adapter_cmd() and handle_misc_cmd()
@@ -411,77 +402,21 @@ void run_daemon_start(int argc, char **argv)
 
 void run_daemon_stop(int argc, char **argv)
 {
-	struct btt_message  btt_msg;
-	struct btt_message *msg_rsp;
+	struct btt_message btt_msg;
 	int status = -1;
 
 	btt_msg.command = BTT_CMD_DAEMON_STOP;
-	btt_msg.length  = 0;
-	msg_rsp = btt_send_command(&btt_msg);
+	btt_msg.length = 0;
 
-	BTT_LOG_S("Status: %s\n", msg_rsp ? "stopped" : "error");
-
-	free(msg_rsp);
+	if (send(app_socket, (const char *)&btt_msg,
+			sizeof(struct btt_message), 0) == -1) {
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
+	}
 
 	/*free list*/
 	list_clear(list, free);
 	wait(&status);
-}
-
-void run_daemon_status(int argc, char **argv)
-{
-	int                server_socket;
-	int                len;
-	struct sockaddr_un server;
-	struct btt_message btt_message;
-	time_t             start_time;
-	time_t             end_time;
-
-	BTT_LOG_S("Status: ");
-
-	if ((server_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		BTT_LOG_S("system socket error\n");
-		return;
-	}
-
-	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, SOCK_PATH);
-	len = strlen(server.sun_path) + sizeof(server.sun_family);
-	if (connect(server_socket, (struct sockaddr *)&server, len) == -1) {
-		BTT_LOG_S("not run\n");
-		close(server_socket);
-		exit(EXIT_SUCCESS);
-	}
-
-	btt_message.command = BTT_CMD_DAEMON_CHECK;
-	btt_message.length  = 0;
-
-	if (send(server_socket, (const char *)&btt_message,
-			sizeof(btt_message) + btt_message.length, 0) == -1) {
-		BTT_LOG_S("run, but system socket error\n");
-		close(server_socket);
-		exit(EXIT_SUCCESS);
-	}
-
-	start_time = time(NULL);
-	end_time   = 0;
-	do {
-		len = recv(server_socket, (char *) &btt_message,
-				sizeof(btt_message), MSG_DONTWAIT);
-		if (len== sizeof(btt_message))
-			break;
-
-		end_time = time(NULL);
-	} while (end_time - start_time < 1);
-
-	if (end_time - start_time >= 1) {
-		BTT_LOG_S("run, but not responsible\n");
-		exit(EXIT_SUCCESS);
-	}
-
-	close(server_socket);
-	BTT_LOG_S("ok\n");
-	exit(EXIT_SUCCESS);
+	unlink(SOCK_PATH);
 }
 
 void run_daemon_restart(int argc, char **argv)

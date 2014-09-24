@@ -21,6 +21,8 @@
 #define DEFAULT_TIME_SEC 3
 #define LONG_TIME_SEC 10
 
+extern int app_socket;
+
 static void run_gatt_client_help(int argc, char **argv);
 static void run_gatt_client_scan(int argc, char **argv);
 static void run_gatt_client_register_client(int argc, char **argv);
@@ -45,7 +47,6 @@ static void run_gatt_client_write_descriptor(int argc, char **argv);
 static void run_gatt_client_reg_for_notification(int argc, char **argv);
 static void run_gatt_client_dereg_for_notification(int argc, char **argv);
 static void run_gatt_client_test_command(int argc, char **argv);
-static int create_daemon_socket(void);
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
 		int server_sock);
 static bool send_by_socket(int server_sock, void *data, size_t len, int flags);
@@ -53,7 +54,7 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 		int server_sock, bool *select_used);
 static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 		bool *wait_for_msg, int server_sock);
-static bool process_stdin(bool *select_used, int client_if);
+static bool process_stdin(bool *select_used, int client_if, int server_sock);
 static void printf_service(btgatt_srvc_id_t srv);
 static void printf_characteristic(btgatt_gatt_id_t cha, int char_prop);
 static bool process_UUID_sscanf(char *src, uint8_t *dest);
@@ -96,7 +97,6 @@ void run_gatt_client_help(int argc, char **argv)
 static void process_request(enum btt_gatt_client_req_t type, void *data,
 		unsigned int recv_time_sec)
 {
-	int server_sock;
 	bool wait_for_msg = TRUE;
 	int client_if = -1;
 
@@ -111,14 +111,13 @@ static void process_request(enum btt_gatt_client_req_t type, void *data,
 
 	errno = 0;
 
-	server_sock = create_daemon_socket();
-	set_sock_rcv_time(recv_time_sec, 0, server_sock);
-	if (!process_send_to_daemon(type, data, server_sock, &select_used))
+	set_sock_rcv_time(recv_time_sec, 0, app_socket);
+	if (!process_send_to_daemon(type, data, app_socket, &select_used))
 		return;
 
 	if (select_used) {
 		FD_SET(fileno(stdin), &set);
-		FD_SET(server_sock, &set);
+		FD_SET(app_socket, &set);
 	}
 
 	if (type == BTT_GATT_CLIENT_REQ_SCAN)
@@ -129,26 +128,24 @@ static void process_request(enum btt_gatt_client_req_t type, void *data,
 		if (select_used) {
 			set_cp = set;
 
-			if (select(server_sock + 1, &set_cp, NULL, NULL, NULL) == -1) {
+			if (select(app_socket + 1, &set_cp, NULL, NULL, NULL) == -1) {
 				BTT_LOG_D("Select error. ");
 				return;
 			}
 		}
 
-		if (!select_used || FD_ISSET(server_sock, &set_cp)) {
+		if (!select_used || FD_ISSET(app_socket, &set_cp)) {
 			if (!process_receive_from_daemon(type, &wait_for_msg,
-					server_sock)) {
+					app_socket)) {
 				BTT_LOG_D("Error while receiving from daemon. ");
 				return;
 			}
 		} else if (select_used && FD_ISSET(fileno(stdin), &set_cp))
-			if (process_stdin(&select_used, client_if))
+			if (process_stdin(&select_used, client_if, app_socket))
 				return;
 
-		if (!wait_for_msg) {
-			close(server_sock);
+		if (!wait_for_msg)
 			return;
-		}
 	}
 }
 
@@ -167,30 +164,6 @@ static void run_gatt_client_scan(int argc, char **argv)
 	process_request(BTT_GATT_CLIENT_REQ_SCAN, &req, DEFAULT_TIME_SEC);
 }
 
-/* function return connected-socket file descriptor */
-/* or -1 when error occurred */
-static int create_daemon_socket(void)
-{
-	int server_sock = -1;
-	struct sockaddr_un server;
-	unsigned int len;
-
-	if ((server_sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		return -1;
-
-	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, SOCK_PATH);
-
-	len = strlen(server.sun_path) + sizeof(server.sun_family);
-
-	if (connect(server_sock, (struct sockaddr *) &server, len) == -1) {
-		close(server_sock);
-		return -1;
-	}
-
-	return server_sock;
-}
-
 static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
 		int server_sock)
 {
@@ -204,10 +177,8 @@ static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
 
 static bool send_by_socket(int server_sock, void *data, size_t len, int flags)
 {
-	if (send(server_sock, data, len, flags) == -1) {
-		close(server_sock);
+	if (send(server_sock, data, len, flags) == -1)
 		return FALSE;
-	}
 
 	return TRUE;
 }
@@ -489,7 +460,6 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	}
 	default:
 		BTT_LOG_S("ERROR: Unknown command - %d", type);
-		close(server_sock);
 		return FALSE;
 	}
 
@@ -511,7 +481,6 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 
 	if ((len == 0 || errno)) {
 		BTT_LOG_S("Timeout\n");
-		close(server_sock);
 		return FALSE;
 	}
 
@@ -1025,16 +994,14 @@ static void printf_characteristic(btgatt_gatt_id_t cha, int char_prop)
 }
 
 /* presently used only by scan */
-static bool process_stdin(bool *select_used, int client_if)
+static bool process_stdin(bool *select_used, int client_if, int server_sock)
 {
 	char buf[256];
 	struct btt_gatt_client_scan tmp;
-	int server_sock;
 
 	scanf("%s", buf);
 
 	if (!strncmp(buf, "stop", 4)) {
-		server_sock = create_daemon_socket();
 		tmp.start = 0;
 		tmp.client_if = client_if;
 

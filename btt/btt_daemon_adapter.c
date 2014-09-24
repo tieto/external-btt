@@ -21,29 +21,32 @@
 extern const bt_interface_t *bluetooth_if;
 extern int socket_remote;
 
-bool turning_on_adapter = FALSE;
-bool bonding_peer_dev   = FALSE;
-
 void handle_adapter_cmd(const struct btt_message *btt_msg,
 		const int socket_remote)
 {
+	bool do_recv = FALSE;
+
 	switch (btt_msg->command) {
 	case BTT_CMD_ADAPTER_UP:
 		/* TODO: detect status of adapter and fix reply*/
-		if (bluetooth_if->enable() == BT_STATUS_SUCCESS)
-			turning_on_adapter = TRUE;
+		bluetooth_if->enable();
+		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_DOWN:
 		bluetooth_if->disable();
+		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_NAME:
 		bluetooth_if->get_adapter_property(BT_PROPERTY_BDNAME);
+		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_ADDRESS:
 		bluetooth_if->get_adapter_property(BT_PROPERTY_BDADDR);
+		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_SCAN:
 		bluetooth_if->start_discovery();
+		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_SCAN_MODE: {
 		struct btt_msg_cmd_adapter_scan_mode msg;
@@ -74,9 +77,7 @@ void handle_adapter_cmd(const struct btt_message *btt_msg,
 
 		recv(socket_remote, &msg, sizeof(msg), 0);
 
-		if (bluetooth_if->create_bond((bt_bdaddr_t *)msg.addr) ==
-				BT_STATUS_SUCCESS)
-			bonding_peer_dev = TRUE;
+		bluetooth_if->create_bond((bt_bdaddr_t *)msg.addr);
 		break;
 	}
 	case BTT_CMD_ADAPTER_UNPAIR: {
@@ -110,6 +111,10 @@ void handle_adapter_cmd(const struct btt_message *btt_msg,
 	default:
 		break;
 	}
+
+	if (do_recv)
+		recv(socket_remote, &btt_msg,
+						sizeof(struct btt_message), 0);
 }
 
 /*
@@ -133,13 +138,10 @@ static void btt_cb_adapter_state_changed(bt_state_t state)
 	else
 		btt_cb.state = true;
 
-	turning_on_adapter = FALSE;
-
 	if (send(socket_remote, (const char *)&btt_cb,
 			sizeof(struct btt_cb_adapter_state), 0) == -1) {
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 	}
-	close(socket_remote);
 }
 
 static void btt_cb_adapter_properties(bt_status_t status,
@@ -165,8 +167,7 @@ static void btt_cb_adapter_properties(bt_status_t status,
 					sizeof(struct btt_cb_adapter_name), 0) == -1) {
 				BTT_LOG_E("%s:System Socket Error 1\n", __FUNCTION__);
 			}
-			if (turning_on_adapter == FALSE)
-				close(socket_remote);
+
 			break;
 		}
 		case BT_PROPERTY_BDADDR: {
@@ -183,8 +184,7 @@ static void btt_cb_adapter_properties(bt_status_t status,
 					sizeof(struct btt_cb_adapter_addr), 0) == -1) {
 				BTT_LOG_E("%s:System Socket Error 2\n", __FUNCTION__);
 			}
-			if (turning_on_adapter == FALSE)
-				close(socket_remote);
+
 			break;
 		}
 		case BT_PROPERTY_UUIDS:
@@ -218,8 +218,7 @@ static void btt_cb_adapter_properties(bt_status_t status,
 					sizeof(struct btt_cb_adapter_addr), 0) == -1) {
 				BTT_LOG_E("%s:System Socket Error 3\n", __FUNCTION__);
 			}
-			if (turning_on_adapter == FALSE)
-				close(socket_remote);
+
 			break;
 		}
 		case BT_PROPERTY_ADAPTER_BONDED_DEVICES:
@@ -293,9 +292,6 @@ static void btt_cb_discovery_state_changed(bt_discovery_state_t state)
 			sizeof(struct btt_cb_adapter_discovery), 0) == -1) {
 		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 	}
-
-	if (state == BT_DISCOVERY_STOPPED)
-		close(socket_remote);
 }
 
 static void btt_cb_pin_request(bt_bdaddr_t *remote_bd_addr,
@@ -356,9 +352,6 @@ static void btt_cb_bond_state_changed(bt_status_t status,
 			sizeof(struct btt_cb_adapter_bond_state_changed), 0) == -1) {
 		BTT_LOG_E("%s:System Socket Error 1\n", __FUNCTION__);
 	}
-
-	if (BT_BOND_STATE_BONDED == state)
-		bonding_peer_dev = FALSE;
 }
 
 static void btt_cb_acl_state_changed(bt_status_t status,

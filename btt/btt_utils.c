@@ -98,9 +98,6 @@ void run_generic_extended(const struct extended_command *commands,
 		return;
 	}
 
-	if (strcmp(argv[1], "help") != 0)
-		btt_daemon_check();
-
 	for (i = 0; i < cmds_num; i += 1) {
 
 		if (strcmp(argv[1], commands[i].comm.command) == 0) {
@@ -126,84 +123,6 @@ void run_generic_extended(const struct extended_command *commands,
 		BTT_LOG_S("Unknown \"%s\" command: <%s>\n", argv[0], argv[1]);
 		return;
 	}
-}
-
-struct btt_message *btt_send_command(struct btt_message *msg)
-{
-	int server_socket;
-	unsigned int len;
-	unsigned int length;
-	struct sockaddr_un  server;
-	struct btt_message *msg_rsp;
-	struct timeval      tv;
-
-	/* Default timeout for client socket*/
-	tv.tv_sec  = 2;
-	tv.tv_usec = 0;
-
-	if ((server_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		BTT_LOG_E("Error: System socket error\n");
-		return NULL;
-	}
-
-	setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO,
-			(char *)&tv, sizeof(struct timeval));
-
-	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, SOCK_PATH);
-	len = strlen(server.sun_path) + sizeof(server.sun_family);
-	if (connect(server_socket, (struct sockaddr *)&server, len) == -1) {
-		BTT_LOG_E("Error: Daemon not run\n");
-		close(server_socket);
-		return NULL;
-	}
-
-	if (send(server_socket, (const char *)msg,
-			sizeof(struct btt_message) + msg->length, 0) == -1) {
-		BTT_LOG_E("Error: System socket send error\n");
-		close(server_socket);
-		return NULL;
-	}
-
-	msg_rsp = (struct btt_message *)malloc(sizeof(struct btt_message));
-	len = recv(server_socket, (char *)msg_rsp,
-			sizeof(struct btt_message), MSG_PEEK);
-	if (errno == EAGAIN || errno == EWOULDBLOCK) {
-		BTT_LOG_E("Error: Timeout\n");
-		free(msg_rsp);
-		close(server_socket);
-		return NULL;
-	}
-	length = msg_rsp->length;
-	free(msg_rsp);
-
-	msg_rsp = (struct btt_message *)malloc(sizeof(struct btt_message) + length);
-	len = recv(server_socket, (char *)msg_rsp,
-			sizeof(struct btt_message) + length, 0);
-
-
-	BTT_LOG_V("btt msg length: %u %u, full length: %u, received length: %u\n",
-			msg_rsp->length,
-			length,
-			(unsigned int)sizeof(struct btt_message) + length,
-			len);
-	if (len < sizeof(struct btt_message) + length) {
-		BTT_LOG_E("Error: Truncated reply\n");
-		free(msg_rsp);
-		close(server_socket);
-		return NULL;
-	}
-
-	if (msg_rsp->command == BTT_RSP_ERROR_NO_TEST_INTERFACE) {
-		BTT_LOG_S("Error: no test_interface\n");
-		free(msg_rsp);
-		close(server_socket);
-		return NULL;
-	}
-
-	close(server_socket);
-
-	return msg_rsp;
 }
 
 struct list_element *list_init(void)
@@ -489,4 +408,32 @@ int hexlines_to_data(int i_arg, int argc, char **argv, unsigned char *data)
 	}
 
 	return length;
+}
+
+/* function return connected-socket file descriptor */
+/* or -1 when error occurred */
+int connect_to_daemon_socket(void)
+{
+	int server_sock = -1;
+	struct sockaddr_un server;
+	unsigned int len;
+
+	BTT_LOG_I("Reconnecting to socket...\n");
+
+	if ((server_sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		return -1;
+	}
+
+	server.sun_family = AF_UNIX;
+	strcpy(server.sun_path, SOCK_PATH);
+
+	len = strlen(server.sun_path) + sizeof(server.sun_family);
+
+	if (connect(server_sock, (struct sockaddr *) &server, len) == -1) {
+		close(server_sock);
+		unlink(SOCK_PATH);
+		return -1;
+	}
+
+	return server_sock;
 }
