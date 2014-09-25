@@ -225,10 +225,11 @@ enum btt_ext_daemon_command {
 };
 
 enum btt_callback {
+	BTT_ADAPTER_CB_START = BTT_DAEMON_END,
 	/* ssp request callback type
 	 * struct btt_cb_adapter_ssp_request
 	 */
-	BTT_ADAPTER_SSP_REQUEST = BTT_DAEMON_END + 1,
+	BTT_ADAPTER_SSP_REQUEST,
 	/* device fount callback type
 	 * struct btt_cb_adapter_device_found
 	 */
@@ -263,8 +264,9 @@ enum btt_callback {
 	 */
 	BTT_ADAPTER_BOND_STATE_CHANGED,
 	/* END OF ADAPTER MSG*/
-	BTT_ADAPTER_END,
+	BTT_ADAPTER_CB_END,
 
+	BTT_GATT_CLIENT_CB_START,
 	BTT_GATT_CLIENT_CB_REGISTER_CLIENT,
 	BTT_GATT_CLIENT_CB_SCAN_RESULT,
 	BTT_GATT_CLIENT_CB_CONNECT,
@@ -287,6 +289,7 @@ enum btt_callback {
 	BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE,
 	BTT_GATT_CLIENT_CB_END,
 
+	BTT_GATT_SERVER_CB_START,
 	BTT_GATT_SERVER_CB_REGISTER_SERVER,
 	BTT_GATT_SERVER_CB_CONNECT,
 	BTT_GATT_SERVER_CB_ADD_SERVICE,

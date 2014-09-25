@@ -88,12 +88,9 @@ void run_adapter_help(int argc, char **argv) {
  */
 static void process_request(enum reguest_type_t type, void *data)
 {
-	unsigned int len;
-	struct sockaddr_un server;
 	struct btt_message msg;
 	struct timeval     tv;
 	struct btt_message  btt_cb;
-	char *buffer;
 
 	errno = 0;
 
@@ -253,166 +250,176 @@ static void process_request(enum reguest_type_t type, void *data)
 	default:
 		break;
 	}
+}
 
-	len = 0;
+void handle_adapter_cb(const struct btt_message *btt_cb)
+{
+	char *buffer;
 
-	while (1) {
-		len = recv(app_socket, &btt_cb, sizeof(btt_cb), MSG_PEEK);
+	switch (btt_cb->command) {
+	case BTT_ADAPTER_PIN_REQUEST: {
+		struct btt_cb_adapter_pin_request pin_req;
 
-		if (len == 0 || errno) {
-			BTT_LOG_S("Timeout\n");
+		if (!RECV(&pin_req, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
 			return;
 		}
-		/* here we receive all messages on the socket. But only requested
-		 * messages are printed (i.e. type == BTT_REQ_AGENT)
-		 */
-		switch (btt_cb.command) {
-		case BTT_ADAPTER_PIN_REQUEST: {
-			struct btt_cb_adapter_pin_request pin_req;
 
-			BTT_LOG_S("\nPIN request\n\n");
+		BTT_LOG_S("\nADAPTER: PIN request.\n");
+		BTT_LOG_S("COD: %u \n", pin_req.cod);
+		BTT_LOG_S("Name: %s\n", pin_req.name);
+		print_bdaddr(pin_req.bd_addr);
+		BTT_LOG_S("\n");
 
-			recv(app_socket, &pin_req, sizeof(pin_req), 0);
+		break;
+	}
+	case BTT_ADAPTER_SSP_REQUEST: {
+		struct btt_cb_adapter_ssp_request ssp_request;
 
-			/* application can receive this callback asynchronously,
-			 * so type condition is removed */
-			BTT_LOG_S("COD: %u \n", pin_req.cod);
-			BTT_LOG_S("Name: %s\n", pin_req.name);
-			print_bdaddr(pin_req.bd_addr);
-			BTT_LOG_S("\n");
-
-			break;
+		if (!RECV(&ssp_request, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
+			return;
 		}
-		case BTT_ADAPTER_SSP_REQUEST: {
-			struct btt_cb_adapter_ssp_request ssp_request;
 
-			BTT_LOG_S("\nSSP request\n\n");
+		BTT_LOG_S("\nADAPTER: SSP request.\n");
+		BTT_LOG_S("COD: %u \n", ssp_request.cod);
+		BTT_LOG_S("Name: %s\n", ssp_request.name);
+		print_bdaddr(ssp_request.bd_addr);
+		BTT_LOG_S("\n");
+		BTT_LOG_S("Passkey: %u\n", ssp_request.passkey);
+		BTT_LOG_S("Variant: %u\n\n", ssp_request.variant);
 
-			recv(app_socket, &ssp_request, sizeof(ssp_request), 0);
+		break;
+	}
+	case BTT_ADAPTER_BOND_STATE_CHANGED: {
+		struct btt_cb_adapter_bond_state_changed state;
 
-			/* application can receive this callback asynchronously,
-			 * so type condition is removed */
-			BTT_LOG_S("COD: %u \n", ssp_request.cod);
-			BTT_LOG_S("Name: %s\n", ssp_request.name);
-			print_bdaddr(ssp_request.bd_addr);
-			BTT_LOG_S("\n");
-			BTT_LOG_S("Passkey: %u\n", ssp_request.passkey);
-			BTT_LOG_S("Variant: %u\n\n", ssp_request.variant);
-
-			break;
+		if (!RECV(&state, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
+			return;
 		}
-		case BTT_ADAPTER_BOND_STATE_CHANGED: {
-			struct btt_cb_adapter_bond_state_changed state;
 
-			len = recv(app_socket, &state, sizeof(state), 0);
-			if (state.status == BT_STATUS_SUCCESS) {
-				print_bdaddr(state.bd_addr);
-				if (state.state == BT_BOND_STATE_BONDED) {
-					BTT_LOG_S("Bonded successfully\n");
-					return;
-				} else if (state.state == BT_BOND_STATE_BONDING) {
-					BTT_LOG_S("Bonding\n");
-				} else {
-					BTT_LOG_S("Not bonded\n");
-					return;
-				}
+		BTT_LOG_S("\nADAPTER: Bond state changed.\n");
+
+		if (state.status == BT_STATUS_SUCCESS) {
+			print_bdaddr(state.bd_addr);
+			if (state.state == BT_BOND_STATE_BONDED) {
+				BTT_LOG_S("Bonded successfully\n");
+				return;
+			} else if (state.state == BT_BOND_STATE_BONDING) {
+				BTT_LOG_S("Bonding\n");
 			} else {
-				BTT_LOG_S("bt_status_t is %d\n", state.status);
+				BTT_LOG_S("Not bonded\n");
 				return;
 			}
-			break;
+		} else {
+			BTT_LOG_S("bt_status_t is %d\n", state.status);
+			return;
 		}
-		case BTT_ADAPTER_DEVICE_FOUND: {
-			struct btt_cb_adapter_device_found device;
 
-			memset(&device, 0, sizeof(device));
-			len = recv(app_socket, &device, sizeof(device), 0);
-			if (type == BTT_REQ_SCAN) {
-				print_bdaddr(device.bd_addr);
-				BTT_LOG_S("%s\n", device.name);
-			}
-			break;
-		}
-		case BTT_ADAPTER_DISCOVERY: {
-			struct btt_cb_adapter_discovery discovery;
+		break;
+	}
+	case BTT_ADAPTER_DEVICE_FOUND: {
+		struct btt_cb_adapter_device_found device;
 
-			len = recv(app_socket, &discovery, sizeof(discovery), 0);
-			if (type == BTT_REQ_SCAN) {
-				if (discovery.state) {
-					BTT_LOG_S("Discovery started\n");
-				} else {
-					BTT_LOG_S("Discovery stopped\n");
-					return;
-				}
-			}
-			break;
+		if (!RECV(&device, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
+			return;
 		}
-		case BTT_ADAPTER_ADDRESS: {
-			struct btt_cb_adapter_addr address;
 
-			len = recv(app_socket, &address, sizeof(address), 0);
-			if (type == BTT_REQ_ADDRESS) {
-				print_bdaddr(address.bd_addr);
-				BTT_LOG_S("\n");
-				return;
-			}
-			break;
-		}
-		case BTT_ADAPTER_STATE_CHANGED: {
-			struct btt_cb_adapter_state state;
+		BTT_LOG_S("\nADAPTER: Device found.\n");
+		print_bdaddr(device.bd_addr);
+		BTT_LOG_S("%s\n", device.name);
 
-			len = recv(app_socket, &state, sizeof(state), 0);
-			if (BTT_REQ_UP && state.state) {
-				BTT_LOG_S("Turned on\n");
-				return;
-			}
-			if (BTT_REQ_DOWN && !state.state) {
-				BTT_LOG_S("Turned off\n");\
-				return;
-			}
-			break;
-		}
-		case BTT_ADAPTER_SCAN_MODE_CHANGED: {
-			struct btt_cb_adapter_scan_mode_changed scan_mode;
+		break;
+	}
+	case BTT_ADAPTER_DISCOVERY: {
+		struct btt_cb_adapter_discovery discovery;
 
-			len = recv(app_socket, &scan_mode, sizeof(scan_mode), 0);
-			if (type == BTT_REQ_SCAN_MODE) {
-				if (scan_mode.mode == 0) {
-					BTT_LOG_S("Scan mode changed -> NONE\n");
-				} else if (scan_mode.mode == 1) {
-					BTT_LOG_S("Scan mode changed -> CONNECTABLE\n");
-				} else if (scan_mode.mode == 2) {
-					BTT_LOG_S("Scan mode changed -> CONNECTABLE & DISCOVERABLE\n");
-				} else if (scan_mode.mode == 3) {
-					BTT_LOG_S("Scan mode changed -> FAILED\n");
-				} else if (scan_mode.mode == 4) {
-					BTT_LOG_S("Scan mode changed -> ALREADY DONE\n");
-				} else {
-					BTT_LOG_S("WTF\n");
-				}
-				return;
-			}
-			break;
+		if (!RECV(&discovery, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
+			return;
 		}
-		case BTT_ADAPTER_NAME: {
-			struct btt_cb_adapter_name name;
 
-			memset(&name, 0, sizeof(name));
-			len = recv(app_socket, &name, sizeof(name), 0);
-			if (type == BTT_REQ_NAME) {
-				BTT_LOG_S("%s\n",name.name);
-				return;
-			}
-			break;
+		BTT_LOG_S("\nADAPTER: Discovery %s\n", (discovery.state ? "started"
+				: "stopped"));
+
+		break;
+	}
+	case BTT_ADAPTER_ADDRESS: {
+		struct btt_cb_adapter_addr address;
+
+		if (!RECV(&address, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
+			return;
 		}
-		default:
-			buffer = malloc(btt_cb.length);
-			if (buffer) {
-				len = recv(app_socket, buffer, btt_cb.length, 0);
-				free(buffer);
-			}
-			break;
+
+		BTT_LOG_S("\nADAPTER: Address.\n");
+		print_bdaddr(address.bd_addr);
+		BTT_LOG_S("\n");
+
+		break;
+	}
+	case BTT_ADAPTER_STATE_CHANGED: {
+		struct btt_cb_adapter_state state;
+
+		if (!RECV(&state, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
+			return;
 		}
+
+		BTT_LOG_S("\nADAPTER: State changed - %d\n", (state.state ? 1 : 0));
+
+		break;
+	}
+	case BTT_ADAPTER_SCAN_MODE_CHANGED: {
+		struct btt_cb_adapter_scan_mode_changed scan_mode;
+
+		if (!RECV(&scan_mode, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
+			return;
+		}
+
+		BTT_LOG_S("\nADAPTER: Scan mode changed.\n");
+
+		if (scan_mode.mode == 0) {
+			BTT_LOG_S("Scan mode changed -> NONE\n");
+		} else if (scan_mode.mode == 1) {
+			BTT_LOG_S("Scan mode changed -> CONNECTABLE\n");
+		} else if (scan_mode.mode == 2) {
+			BTT_LOG_S("Scan mode changed -> CONNECTABLE & DISCOVERABLE\n");
+		} else if (scan_mode.mode == 3) {
+			BTT_LOG_S("Scan mode changed -> FAILED\n");
+		} else if (scan_mode.mode == 4) {
+			BTT_LOG_S("Scan mode changed -> ALREADY DONE\n");
+		} else {
+			BTT_LOG_S("ERROR\n");
+		}
+
+		break;
+	}
+	case BTT_ADAPTER_NAME: {
+		struct btt_cb_adapter_name name;
+
+		if (!RECV(&name, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
+			return;
+		}
+
+		BTT_LOG_S("\nADAPTER: Name.\n");
+		BTT_LOG_S("%s\n",name.name);
+
+		break;
+	}
+	default:
+		buffer = malloc(btt_cb->length);
+
+		if (buffer) {
+			recv(app_socket, buffer, btt_cb->length, 0);
+			free(buffer);
+		}
+
+		break;
 	}
 }
 

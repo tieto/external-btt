@@ -51,17 +51,14 @@ static void set_sock_rcv_time(unsigned int sec, unsigned int usec,
 		int server_sock);
 static bool send_by_socket(int server_sock, void *data, size_t len, int flags);
 static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
-		int server_sock, bool *select_used);
-static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
-		bool *wait_for_msg, int server_sock);
-static bool process_stdin(bool *select_used, int client_if, int server_sock);
+		int server_sock);
 static void printf_service(btgatt_srvc_id_t srv);
 static void printf_characteristic(btgatt_gatt_id_t cha, int char_prop);
 static bool process_UUID_sscanf(char *src, uint8_t *dest);
 
 static const struct extended_command gatt_client_commands[] = {
 		{{ "help",							"",							run_gatt_client_help}, 1, MAX_ARGC},
-		{{ "scan",							"<client_if>",				run_gatt_client_scan}, 2, 2},
+		{{ "scan",							"<client_if> <start>", run_gatt_client_scan}, 3, 3},
 		{{ "register_client",				"<16-bits UUID>", run_gatt_client_register_client}, 2, 2},
 		{{ "unregister_client",				"<client_if>", run_gatt_client_un_register_client}, 2, 2},
 		{{ "connect",						"<client_if> <BD_ADDR> <is_direct>", run_gatt_client_connect}, 4, 4},
@@ -97,56 +94,13 @@ void run_gatt_client_help(int argc, char **argv)
 static void process_request(enum btt_gatt_client_req_t type, void *data,
 		unsigned int recv_time_sec)
 {
-	bool wait_for_msg = TRUE;
 	int client_if = -1;
-
-	/*select variables*/
-	/*presently select is needed only by scan*/
-	bool select_used = FALSE;
-	fd_set set_cp;
-	fd_set set;
-
-	FD_ZERO(&set);
-	FD_ZERO(&set_cp);
 
 	errno = 0;
 
 	set_sock_rcv_time(recv_time_sec, 0, app_socket);
-	if (!process_send_to_daemon(type, data, app_socket, &select_used))
-		return;
 
-	if (select_used) {
-		FD_SET(fileno(stdin), &set);
-		FD_SET(app_socket, &set);
-	}
-
-	if (type == BTT_GATT_CLIENT_REQ_SCAN)
-		client_if = ((struct btt_gatt_client_scan *) data)->client_if;
-
-	while (1) {
-
-		if (select_used) {
-			set_cp = set;
-
-			if (select(app_socket + 1, &set_cp, NULL, NULL, NULL) == -1) {
-				BTT_LOG_D("Select error. ");
-				return;
-			}
-		}
-
-		if (!select_used || FD_ISSET(app_socket, &set_cp)) {
-			if (!process_receive_from_daemon(type, &wait_for_msg,
-					app_socket)) {
-				BTT_LOG_D("Error while receiving from daemon. ");
-				return;
-			}
-		} else if (select_used && FD_ISSET(fileno(stdin), &set_cp))
-			if (process_stdin(&select_used, client_if, app_socket))
-				return;
-
-		if (!wait_for_msg)
-			return;
-	}
+	process_send_to_daemon(type, data, app_socket);
 }
 
 void run_gatt_client(int argc, char **argv)
@@ -160,7 +114,8 @@ static void run_gatt_client_scan(int argc, char **argv)
 	struct btt_gatt_client_scan req;
 
 	sscanf(argv[1], "%d", &req.client_if);
-	req.start = 1;
+	sscanf(argv[2], "%u", &req.start);
+
 	process_request(BTT_GATT_CLIENT_REQ_SCAN, &req, DEFAULT_TIME_SEC);
 }
 
@@ -185,7 +140,7 @@ static bool send_by_socket(int server_sock, void *data, size_t len, int flags)
 
 /* server_sock must be correct socket descriptor */
 static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
-		int server_sock, bool *select_used)
+		int server_sock)
 {
 	switch (type) {
 	case BTT_GATT_CLIENT_REQ_SCAN:
@@ -197,11 +152,6 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 		if (!send_by_socket(server_sock, cmd_scan,
 				sizeof(struct btt_gatt_client_scan), 0))
 			return FALSE;
-
-		if (cmd_scan->start == 1)
-			*select_used = TRUE;
-		else
-			*select_used = FALSE;
 
 		break;
 	}
@@ -466,467 +416,418 @@ static bool process_send_to_daemon(enum btt_gatt_client_req_t type, void *data,
 	return TRUE;
 }
 
-/* server_sock must be correct socket descriptor */
-static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
-		bool *wait_for_msg, int server_sock)
+void handle_gattc_cb(const struct btt_message *btt_cb)
 {
-	unsigned int len, i;
-	struct btt_message btt_cb;
+	unsigned int i;
 	uint8_t empty_BD_ADDR[BD_ADDR_LEN];
+	char *buffer;
 
 	errno = 0;
 	memset(empty_BD_ADDR, 0, BD_ADDR_LEN);
 
-	len = recv(server_sock, &btt_cb, sizeof(btt_cb), MSG_PEEK);
-
-	if ((len == 0 || errno)) {
-		BTT_LOG_S("Timeout\n");
-		return FALSE;
-	}
-
-	switch (btt_cb.command) {
+	switch (btt_cb->command) {
 	case BTT_GATT_CLIENT_CB_BT_STATUS:
 	{
 		struct btt_gatt_client_cb_bt_status stat;
 
-		if (!RECV(&stat, server_sock)) {
+		if (!RECV(&stat, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		BTT_LOG_S("GATT Client request status: %s\n",
+		BTT_LOG_S("\nGATTC: Request status: %s\n",
 				bt_status_string[stat.status]);
-		*wait_for_msg = (((stat.status != BT_STATUS_SUCCESS) || (type
-				== BTT_GATT_CLIENT_REQ_UNREGISTER_CLIENT) || (type
-						== BTT_GATT_CLIENT_REQ_SET_ADV_DATA) || (type
-								== BTT_GATT_CLIENT_REQ_REFRESH) || (type
-										== BTT_GATT_CLIENT_REQ_TEST_COMMAND)) ?
-										FALSE : TRUE);
-		return TRUE;
+
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_SCAN_RESULT:
 	{
 		struct btt_gatt_client_cb_scan_result device;
 
-		if (!RECV(&device, server_sock)) {
+		if (!RECV(&device, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_SCAN) {
-			if (memcmp(device.bd_addr, empty_BD_ADDR, BD_ADDR_LEN)) {
-				print_bdaddr(device.bd_addr);
-				BTT_LOG_S("%s, ", device.name);
-				BTT_LOG_S("%s\n", discoverable_mode[device.discoverable_mode]);
-			}
+		BTT_LOG_S("\nGATTC: Scan result.\n");
+
+		if (memcmp(device.bd_addr, empty_BD_ADDR, BD_ADDR_LEN)) {
+			print_bdaddr(device.bd_addr);
+			BTT_LOG_S("%s, ", device.name);
+			BTT_LOG_S("%s\n", discoverable_mode[device.discoverable_mode]);
 		}
 
-		*wait_for_msg = TRUE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_REGISTER_CLIENT:
 	{
 		struct btt_gatt_client_cb_register_client cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_REGISTER_CLIENT) {
-			printf_UUID_128(cb.app_uuid.uu, FALSE, FALSE);
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
-		}
+		BTT_LOG_S("\nGATTC: Register client.\n");
+		printf_UUID_128(cb.app_uuid.uu, FALSE, FALSE);
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_CONNECT:
 	{
 		struct btt_gatt_client_cb_connect cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_CONNECT) {
-			BTT_LOG_S("Address: ");
-			print_bdaddr(cb.bda.address);
-			BTT_LOG_S("\nConnection ID: %d\n", cb.conn_id);
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
-		}
+		BTT_LOG_S("\nGATTC: Connect.\n");
+		BTT_LOG_S("Address: ");
+		print_bdaddr(cb.bda.address);
+		BTT_LOG_S("\nConnection ID: %d\n", cb.conn_id);
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_DISCONNECT:
 	{
 		struct btt_gatt_client_cb_disconnect cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_DISCONNECT) {
-			BTT_LOG_S("Address: ");
-			print_bdaddr(cb.bda.address);
-			BTT_LOG_S("\nConnection ID: %d\n", cb.conn_id);
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
-		}
+		BTT_LOG_S("\nGATTC: Disconnect.\n");
+		BTT_LOG_S("Address: ");
+		print_bdaddr(cb.bda.address);
+		BTT_LOG_S("\nConnection ID: %d\n", cb.conn_id);
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Client interface: %d\n\n", cb.client_if);
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_READ_REMOTE_RSSI:
 	{
 		struct btt_gatt_client_cb_read_remote_rssi cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_READ_REMOTE_RSSI) {
-			BTT_LOG_S("Address: ");
-			print_bdaddr(cb.addr.address);
-			BTT_LOG_S("\nStatus: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("RSSI: %d \n", cb.rssi);
-			BTT_LOG_S("(higher RSSI level = stronger signal)\n\n");
-		}
+		BTT_LOG_S("\nGATTC: Read remote RSSI.\n");
+		BTT_LOG_S("Address: ");
+		print_bdaddr(cb.addr.address);
+		BTT_LOG_S("\nStatus: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("RSSI: %d \n", cb.rssi);
+		BTT_LOG_S("(higher RSSI level = stronger signal)\n\n");
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_LISTEN:
 	{
 		struct btt_gatt_client_cb_listen cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_LISTEN) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Client interface: %d\n\n", cb.server_if);
-		}
+		BTT_LOG_S("\nGATTC: Listen.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Client interface: %d\n\n", cb.server_if);
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_GET_DEVICE_TYPE:
 	{
 		struct btt_gatt_client_cb_get_device_type cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_GET_DEVICE_TYPE) {
-			BTT_LOG_S("Device type: ");
+		BTT_LOG_S("\nGATTC: Get device type.\n");
+		BTT_LOG_S("Device type: ");
 
-			switch (cb.type) {
-			case BT_DEVICE_DEVTYPE_BREDR:
-				BTT_LOG_S("BR/EDR\n");
-				break;
-			case BT_DEVICE_DEVTYPE_BLE:
-				BTT_LOG_S("LE\n");
-				break;
-			case BT_DEVICE_DEVTYPE_DUAL:
-				BTT_LOG_S("DUAL\n");
-				break;
-			default:
-				BTT_LOG_S("Unknown type or error: %d\n", cb.type);
-			}
+		switch (cb.type) {
+		case BT_DEVICE_DEVTYPE_BREDR:
+			BTT_LOG_S("BR/EDR\n");
+			break;
+		case BT_DEVICE_DEVTYPE_BLE:
+			BTT_LOG_S("LE\n");
+			break;
+		case BT_DEVICE_DEVTYPE_DUAL:
+			BTT_LOG_S("DUAL\n");
+			break;
+		default:
+			BTT_LOG_S("Unknown type or error: %d\n", cb.type);
 		}
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_SEARCH_RESULT:
 	{
 		struct btt_gatt_client_cb_search_result cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_SEARCH_SERVICE) {
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
-			printf_service(cb.srvc_id);
-			BTT_LOG_S("\n");
-		}
+		BTT_LOG_S("\nGATTC: Search result.\n");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		printf_service(cb.srvc_id);
+		BTT_LOG_S("\n");
 
-		*wait_for_msg = TRUE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_SEARCH_COMPLETE:
 	{
 		struct btt_gatt_client_cb_search_complete cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_SEARCH_SERVICE) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
-		}
+		BTT_LOG_S("\nGATTC: Search complete.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_GET_INCLUDED_SERVICE:
 	{
 		struct btt_gatt_client_cb_get_included_service cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_GET_INCLUDED_SERVICE) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		BTT_LOG_S("\nGATTC: Get included service.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
 
-			if (!cb.status) {
-				BTT_LOG_S("SERVICE: \n");
-				printf_service(cb.srvc_id);
-				BTT_LOG_S("\nINCLUDED SERVICE: \n");
-				printf_service(cb.incl_srvc_id);
-				BTT_LOG_S("\n");
-			}
+		if (!cb.status) {
+			BTT_LOG_S("SERVICE: \n");
+			printf_service(cb.srvc_id);
+			BTT_LOG_S("\nINCLUDED SERVICE: \n");
+			printf_service(cb.incl_srvc_id);
+			BTT_LOG_S("\n");
 		}
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_GET_CHARACTERISTIC:
 	{
 		struct btt_gatt_client_cb_get_characteristic cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_GET_CHARACTERISTIC) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		BTT_LOG_S("\nGATTC: Get characteristic.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
 
-			if (!cb.status) {
-				BTT_LOG_S("SERVICE: \n");
-				printf_service(cb.srvc_id);
-				BTT_LOG_S("\nCHARACTERISTIC: \n");
-				printf_characteristic(cb.char_id, cb.char_prop);
-			}
+		if (!cb.status) {
+			BTT_LOG_S("SERVICE: \n");
+			printf_service(cb.srvc_id);
+			BTT_LOG_S("\nCHARACTERISTIC: \n");
+			printf_characteristic(cb.char_id, cb.char_prop);
 		}
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_GET_DESCRIPTOR:
 	{
 		struct btt_gatt_client_cb_get_descriptor cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_GET_DESCRIPTOR) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		BTT_LOG_S("\nGATTC: Get descriptor.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
 
-			if (!cb.status) {
-				BTT_LOG_S("SERVICE: \n");
-				printf_service(cb.srvc_id);
-				BTT_LOG_S("\nCHARACTERISTIC: \n");
-				printf_characteristic(cb.char_id, 0);
-				BTT_LOG_S("\nDESCRIPTOR: \n");
-				printf_characteristic(cb.descr_id, 0);
-			}
+		if (!cb.status) {
+			BTT_LOG_S("SERVICE: \n");
+			printf_service(cb.srvc_id);
+			BTT_LOG_S("\nCHARACTERISTIC: \n");
+			printf_characteristic(cb.char_id, 0);
+			BTT_LOG_S("\nDESCRIPTOR: \n");
+			printf_characteristic(cb.descr_id, 0);
 		}
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_READ_CHARACTERISTIC:
 	{
 		struct btt_gatt_client_cb_read_characteristic cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_READ_CHARACTERISTIC) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		BTT_LOG_S("\nGATTC: Read characteristic.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
 
-			if (!cb.status) {
-				BTT_LOG_S("SERVICE: \n");
-				printf_service(cb.p_data.srvc_id);
-				BTT_LOG_S("\nCHARACTERISTIC: \n");
-				printf_characteristic(cb.p_data.char_id, 0);
-				BTT_LOG_S("Unformatted value: ");
+		if (!cb.status) {
+			BTT_LOG_S("SERVICE: \n");
+			printf_service(cb.p_data.srvc_id);
+			BTT_LOG_S("\nCHARACTERISTIC: \n");
+			printf_characteristic(cb.p_data.char_id, 0);
+			BTT_LOG_S("Unformatted value: ");
 
-				for (i = 0; i < cb.p_data.value.len; i++)
-					BTT_LOG_S("%.2X", cb.p_data.value.value[i]);
+			for (i = 0; i < cb.p_data.value.len; i++)
+				BTT_LOG_S("%.2X", cb.p_data.value.value[i]);
 
-				BTT_LOG_S("\nValue type: %.4X\n", cb.p_data.value_type);
-				BTT_LOG_S("Status: %.2X\n", cb.p_data.status);
-			}
+			BTT_LOG_S("\nValue type: %.4X\n", cb.p_data.value_type);
+			BTT_LOG_S("Status: %.2X\n", cb.p_data.status);
 		}
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_READ_DESCRIPTOR:
 	{
 		struct btt_gatt_client_cb_read_descriptor cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_READ_DESCRIPTOR) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		BTT_LOG_S("\nGATTC: Read descriptor.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
 
-			if (!cb.status) {
-				BTT_LOG_S("SERVICE: \n");
-				printf_service(cb.p_data.srvc_id);
-				BTT_LOG_S("\nCHARACTERISTIC: \n");
-				printf_characteristic(cb.p_data.char_id, 0);
-				BTT_LOG_S("\nDESCRIPTOR: \n");
-				printf_characteristic(cb.p_data.descr_id, 0);
-				BTT_LOG_S("Unformatted value: \n\t");
+		if (!cb.status) {
+			BTT_LOG_S("SERVICE: \n");
+			printf_service(cb.p_data.srvc_id);
+			BTT_LOG_S("\nCHARACTERISTIC: \n");
+			printf_characteristic(cb.p_data.char_id, 0);
+			BTT_LOG_S("\nDESCRIPTOR: \n");
+			printf_characteristic(cb.p_data.descr_id, 0);
+			BTT_LOG_S("Unformatted value: \n\t");
 
-				for (i = 0; i < cb.p_data.value.len; i++)
-					BTT_LOG_S("%.2X", cb.p_data.value.value[i]);
+			for (i = 0; i < cb.p_data.value.len; i++)
+				BTT_LOG_S("%.2X", cb.p_data.value.value[i]);
 
-				BTT_LOG_S("\nValue type: %.4X\n", cb.p_data.value_type);
-				BTT_LOG_S("Status: %.2X\n", cb.p_data.status);
-			}
+			BTT_LOG_S("\nValue type: %.4X\n", cb.p_data.value_type);
+			BTT_LOG_S("Status: %.2X\n", cb.p_data.status);
 		}
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_WRITE_CHARACTERISTIC:
 	{
 		struct btt_gatt_client_cb_write_characteristic cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_WRITE_CHARACTERISTIC) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		BTT_LOG_S("\nGATTC: Write characteristic.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
 
-			if (!cb.status) {
-				BTT_LOG_S("SERVICE: \n");
-				printf_service(cb.p_data.srvc_id);
-				BTT_LOG_S("\nCHARACTERISTIC: \n");
-				printf_characteristic(cb.p_data.char_id, 0);
-				BTT_LOG_S("\n");
-			}
+		if (!cb.status) {
+			BTT_LOG_S("SERVICE: \n");
+			printf_service(cb.p_data.srvc_id);
+			BTT_LOG_S("\nCHARACTERISTIC: \n");
+			printf_characteristic(cb.p_data.char_id, 0);
+			BTT_LOG_S("\n");
 		}
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_EXECUTE_WRITE:
 	{
 		struct btt_gatt_client_cb_execute_write cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_EXECUTE_WRITE) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n\n", cb.conn_id);
-		}
+		BTT_LOG_S("\nGATTC: Execute write.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n\n", cb.conn_id);
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_WRITE_DESCRIPTOR:
 	{
 		struct btt_gatt_client_cb_write_descriptor cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_WRITE_DESCRIPTOR) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		BTT_LOG_S("\nGATTC: Write descriptor.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
 
-			if (!cb.status) {
-				BTT_LOG_S("SERVICE: \n");
-				printf_service(cb.p_data.srvc_id);
-				BTT_LOG_S("\nCHARACTERISTIC: \n");
-				printf_characteristic(cb.p_data.char_id, 0);
-				BTT_LOG_S("\nDESCRIPTOR: \n");
-				printf_characteristic(cb.p_data.descr_id, 0);
-			}
+		if (!cb.status) {
+			BTT_LOG_S("SERVICE: \n");
+			printf_service(cb.p_data.srvc_id);
+			BTT_LOG_S("\nCHARACTERISTIC: \n");
+			printf_characteristic(cb.p_data.char_id, 0);
+			BTT_LOG_S("\nDESCRIPTOR: \n");
+			printf_characteristic(cb.p_data.descr_id, 0);
 		}
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_REGISTER_FOR_NOTIFICATION:
 	{
 		struct btt_gatt_client_cb_reg_for_notification cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
-		if (type == BTT_GATT_CLIENT_REQ_REGISTER_FOR_NOTIFICATION || type
-				== BTT_GATT_CLIENT_REQ_DEREGISTER_FOR_NOTIFICATION) {
-			BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
-			BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
-			BTT_LOG_S("Registered: %s\n", (!cb.registered) ? "TRUE" : "FALSE");
+		BTT_LOG_S("\nGATTC: Register for notification.\n");
+		BTT_LOG_S("Status: %s\n", (!cb.status) ? "OK" : "ERROR");
+		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
+		BTT_LOG_S("Registered: %s\n", (!cb.registered) ? "TRUE" : "FALSE");
 
-			if (!cb.status) {
-				BTT_LOG_S("SERVICE: \n");
-				printf_service(cb.srvc_id);
-				BTT_LOG_S("\nCHARACTERISTIC: \n");
-				printf_characteristic(cb.char_id, 0);
-				BTT_LOG_S("\n");
-			}
+		if (!cb.status) {
+			BTT_LOG_S("SERVICE: \n");
+			printf_service(cb.srvc_id);
+			BTT_LOG_S("\nCHARACTERISTIC: \n");
+			printf_characteristic(cb.char_id, 0);
+			BTT_LOG_S("\n");
 		}
 
-		*wait_for_msg = FALSE;
-		return TRUE;
+		break;
 	}
 	case BTT_GATT_CLIENT_CB_NOTIFY:
 	{
 		struct btt_gatt_client_cb_notify cb;
 
-		if (!RECV(&cb, server_sock)) {
+		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
-			return FALSE;
+			return;
 		}
 
+		BTT_LOG_S("\nGATTC: Notify.\n");
 		BTT_LOG_S("Connection Id: %d.\n", cb.conn_id);
 		BTT_LOG_S("\nAddress: ");
 		print_bdaddr(cb.p_data.bda.address);
@@ -940,15 +841,18 @@ static bool process_receive_from_daemon(enum btt_gatt_client_req_t type,
 			BTT_LOG_S("%.2X", cb.p_data.value[i]);
 
 		BTT_LOG_S("\nNotify: %s\n", (cb.p_data.is_notify) ? "TRUE" : "FALSE");
-		*wait_for_msg = TRUE;
-		return TRUE;
-	}
-	default:
-		*wait_for_msg = TRUE;
 		break;
 	}
+	default:
+		buffer = malloc(btt_cb->length);
 
-	return TRUE;
+		if (buffer) {
+			recv(app_socket, buffer, btt_cb->length, 0);
+			free(buffer);
+		}
+
+		break;
+	}
 }
 
 static void printf_service(btgatt_srvc_id_t srv)
@@ -991,33 +895,6 @@ static void printf_characteristic(btgatt_gatt_id_t cha, int char_prop)
 	if (char_prop & GATT_CHAR_PROP_BIT_EXT_PROP)
 		BTT_LOG_S("\tExtended properties\n");
 
-}
-
-/* presently used only by scan */
-static bool process_stdin(bool *select_used, int client_if, int server_sock)
-{
-	char buf[256];
-	struct btt_gatt_client_scan tmp;
-
-	scanf("%s", buf);
-
-	if (!strncmp(buf, "stop", 4)) {
-		tmp.start = 0;
-		tmp.client_if = client_if;
-
-		if (process_send_to_daemon(BTT_GATT_CLIENT_REQ_SCAN, &tmp,
-				server_sock, select_used)) {
-			BTT_LOG_S("GATT Client: Scan stopped. \n");
-			return TRUE;
-		} else {
-			BTT_LOG_S("Error while stopping scan. \n");
-		}
-
-	} else {
-		BTT_LOG_S("Write 'stop' to stop scanning. \n");
-	}
-
-	return FALSE;
 }
 
 /* 4 hex-number as argument, like FFFF */

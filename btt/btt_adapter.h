@@ -118,6 +118,7 @@ struct btt_cb_adapter_discovery {
 	bool state;
 };
 
+extern void handle_adapter_cb(const struct btt_message *btt_cb);
 extern void run_adapter(int argc, char **argv);
 extern const struct command *btt_adapter_commands;
 

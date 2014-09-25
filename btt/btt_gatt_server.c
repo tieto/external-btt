@@ -69,13 +69,9 @@ void run_gatt_server_help(int argc, char **argv)
 
 static void process_request(enum btt_gatt_server_req_t type, void *data)
 {
-	unsigned int len;
-	struct sockaddr_un server;
 	struct btt_message msg;
 	struct timeval tv;
 	struct btt_message btt_cb;
-	char *buffer;
-	unsigned int i;
 
 	errno = 0;
 
@@ -242,245 +238,207 @@ static void process_request(enum btt_gatt_server_req_t type, void *data)
 	default:
 		break;
 	}
+}
 
-	len = 0;
+void handle_gatts_cb(const struct btt_message *btt_cb)
+{
+	char *buffer;
 
-	while (1) {
-		len = recv(app_socket, &btt_cb, sizeof(btt_cb), MSG_PEEK);
+	switch (btt_cb->command) {
+	case BTT_GATT_SERVER_CB_END:
+	{
+		struct btt_gatt_server_cb_status cb;
 
-		if (len == 0 || errno) {
-			BTT_LOG_S("Timeout\n");
+		if (!RECV(&cb, app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-        /* here we receive all messages on the socket. But only requested
-         * messages are printed (i.e. type == BTT_REQ_AGENT)
-         */
-		switch (btt_cb.command) {
-		case BTT_GATT_SERVER_CB_END:
-		{
-			struct btt_gatt_server_cb_status cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Status request - %s.\n",!cb.status ? "OK" : "ERROR");
 
-			if (!RECV(&cb, app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_REGISTER_SERVER:
+	{
+		struct btt_gatt_server_cb_reg_result cb;
 
-			BTT_LOG_S("\nStatus: %s\n\n",!cb.status ? "OK" : "ERROR");
+		if (!RECV(&cb, app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_REGISTER_SERVER:
-		{
-			struct btt_gatt_server_cb_reg_result cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Register server.\n");
+		BTT_LOG_S("\n");
+		printf_UUID_128(cb.app_uuid.uu, FALSE, FALSE);
+		BTT_LOG_S("Status: %s\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("Server interface: %d\n\n", cb.server_if);
 
-			if (!RECV(&cb, app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_CONNECT:
+	{
+		struct btt_gatt_server_cb_connect cb;
 
-			if (type == BTT_GATT_SERVER_REQ_REGISTER_SERVER) {
-				BTT_LOG_S("\n");
-				printf_UUID_128(cb.app_uuid.uu, FALSE, FALSE);
-				BTT_LOG_S("Status: %s\n",!cb.status ? "OK" : "ERROR");
-				BTT_LOG_S("Server interface: %d\n\n", cb.server_if);
-			}
-
+		if (!RECV(&cb,app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_CONNECT:
-		{
-			struct btt_gatt_server_cb_connect cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Connect.\n");
+		BTT_LOG_S("Address: ");
+		print_bdaddr(cb.bda.address);
+		BTT_LOG_S("\nConnection ID: %d\n", cb.conn_id);
+		BTT_LOG_S("%s\n", (cb.connected) ? "CONNECT" : "DISCONNECT");
+		BTT_LOG_S("Server interface: %d\n\n", cb.server_if);
 
-			if (!RECV(&cb,app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_ADD_SERVICE:
+	{
+		struct btt_gatt_server_cb_add_service cb;
 
-			if (type == BTT_GATT_SERVER_REQ_CONNECT || BTT_GATT_SERVER_REQ_DISCONNECT) {
-				BTT_LOG_S("Address: ");
-				print_bdaddr(cb.bda.address);
-				BTT_LOG_S("\nConnection ID: %d\n", cb.conn_id);
-				BTT_LOG_S("%s\n", (cb.connected) ? "CONNECT" : "DISCONNECT");
-				BTT_LOG_S("Server interface: %d\n\n", cb.server_if);
-			}
-
+		if (!RECV(&cb, app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_ADD_SERVICE:
-		{
-			struct btt_gatt_server_cb_add_service cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Add service.\n");
+		BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("Server interface: %d\n", cb.server_if);
+		printf_UUID_128(cb.srvc_id.id.uuid.uu, FALSE, FALSE);
+		BTT_LOG_S("Instance ID: %d\n", cb.srvc_id.id.inst_id);
+		BTT_LOG_S("Is Primary: %s\n", (cb.srvc_id.is_primary) ?
+				"True" : "False");
+		BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
 
-			if (!RECV(&cb, app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_ADD_INCLUDED_SERVICE:
+	{
+		struct btt_gatt_server_cb_add_included_srvc cb;
 
-			if (type == BTT_GATT_SERVER_REQ_ADD_SERVICE) {
-				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
-				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				printf_UUID_128(cb.srvc_id.id.uuid.uu, FALSE, FALSE);
-				BTT_LOG_S("Instance ID: %d\n", cb.srvc_id.id.inst_id);
-				BTT_LOG_S("Is Primary: %s\n", (cb.srvc_id.is_primary) ?
-						"True" : "False");
-				BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
-			}
-
+		if (!RECV(&cb, app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_ADD_INCLUDED_SERVICE:
-		{
-			struct btt_gatt_server_cb_add_included_srvc cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Add included service.\n");
+		BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("Server interface: %d\n", cb.server_if);
+		BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
+		BTT_LOG_S("Included Service Handle: %d\n\n",
+				cb.incl_srvc_handle);
 
-			if (!RECV(&cb, app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC:
+	{
+		struct btt_gatt_server_cb_add_characteristic cb;
 
-			if (type == BTT_GATT_SERVER_REQ_ADD_INCLUDED_SERVICE) {
-				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
-				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
-				BTT_LOG_S("Included Service Handle: %d\n\n",
-						cb.incl_srvc_handle);
-			}
-
+		if (!RECV(&cb, app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_ADD_CHARACTERISTIC:
-		{
-			struct btt_gatt_server_cb_add_characteristic cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Add characteristic.\n");
+		BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("Server interface: %d\n", cb.server_if);
+		printf_UUID_128(cb.uuid.uu, FALSE, FALSE);
+		BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
+		BTT_LOG_S("Characteristic Handle: %d\n\n", cb.char_handle);
 
-			if (!RECV(&cb, app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_ADD_DESCRIPTOR:
+	{
+		struct btt_gatt_server_cb_add_descriptor cb;
 
-			if (type == BTT_GATT_SERVER_REQ_ADD_CHARACTERISTIC) {
-				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
-				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				printf_UUID_128(cb.uuid.uu, FALSE, FALSE);
-				BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
-				BTT_LOG_S("Characteristic Handle: %d\n\n", cb.char_handle);
-			}
+		if (!RECV(&cb, app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_ADD_DESCRIPTOR:
-		{
-			struct btt_gatt_server_cb_add_descriptor cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Add descriptor.\n");
+		BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("Server interface: %d\n", cb.server_if);
+		printf_UUID_128(cb.uuid.uu, FALSE, FALSE);
+		BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
+		BTT_LOG_S("Descriptor Handle: %d\n\n", cb.descr_handle);
 
-			if (!RECV(&cb, app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_START_SERVICE:
+	{
+		struct btt_gatt_server_cb_start_service cb;
 
-			if (type == BTT_GATT_SERVER_REQ_ADD_DESCRIPTOR) {
-				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
-				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				printf_UUID_128(cb.uuid.uu, FALSE, FALSE);
-				BTT_LOG_S("Service Handle: %d\n", cb.srvc_handle);
-				BTT_LOG_S("Descriptor Handle: %d\n\n", cb.descr_handle);
-			}
-
+		if (!RECV(&cb, app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_START_SERVICE:
-		{
-			struct btt_gatt_server_cb_start_service cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Start service.\n");
+		BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("Server interface: %d\n", cb.server_if);
+		BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
 
-			if (!RECV(&cb, app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_STOP_SERVICE:
+	{
+		struct btt_gatt_server_cb_stop_service cb;
 
-			if (type == BTT_GATT_SERVER_REQ_START_SERVICE) {
-				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
-				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
-			}
-
+		if (!RECV(&cb,app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_STOP_SERVICE:
-		{
-			struct btt_gatt_server_cb_stop_service cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Stop service.\n");
+		BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("Server interface: %d\n", cb.server_if);
+		BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
 
-			if (!RECV(&cb,app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_DELETE_SERVICE:
+	{
+		struct btt_gatt_server_cb_delete_service cb;
 
-			if (type == BTT_GATT_SERVER_REQ_STOP_SERVICE) {
-				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
-				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
-			}
-
+		if (!RECV(&cb, app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_DELETE_SERVICE:
-		{
-			struct btt_gatt_server_cb_delete_service cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Register server.\n");
+		BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("Server interface: %d\n", cb.server_if);
+		BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
 
-			if (!RECV(&cb, app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	case BTT_GATT_SERVER_CB_RESPONSE_CONFIRMATION:
+	{
+		struct btt_gatt_server_cb_response_confirmation cb;
 
-			if (type == BTT_GATT_SERVER_REQ_DELETE_SERVICE) {
-				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
-				BTT_LOG_S("Server interface: %d\n", cb.server_if);
-				BTT_LOG_S("Service Handle: %d\n\n", cb.srvc_handle);
-			}
-
+		if (!RECV(&cb, app_socket)) {
+			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
-		case BTT_GATT_SERVER_CB_RESPONSE_CONFIRMATION:
-		{
-			struct btt_gatt_server_cb_response_confirmation cb;
 
-			memset(&cb, 0, sizeof(cb));
+		BTT_LOG_S("\nGATTS: Register server.\n");
+		BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("Handle: %d\n", cb.handle);
 
-			if (!RECV(&cb, app_socket)) {
-				BTT_LOG_S("Error: incorrect size of received structure.\n");
-				return;
-			}
+		break;
+	}
+	default:
+		buffer = malloc(btt_cb->length);
 
-			if (type == BTT_GATT_SERVER_REQ_SEND_RESPONSE) {
-				BTT_LOG_S("\nStatus: %s\n",!cb.status ? "OK" : "ERROR");
-				BTT_LOG_S("Handle: %d\n", cb.handle);
-			}
-
-			return;
+		if (buffer) {
+			recv(app_socket, buffer, btt_cb->length, 0);
+			free(buffer);
 		}
-		default:
-			buffer = malloc(btt_cb.length);
 
-			if (buffer) {
-				recv(app_socket, buffer, btt_cb.length, 0);
-				free(buffer);
-			}
-
-			break;
-		}
+		break;
 	}
 }
 
