@@ -131,8 +131,14 @@ static void run_exit(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	unsigned int i;
+	int length = 0;
 	int argc2, tmp;
-	char buff[BUFSIZ], **argv2;
+	char buff[BUFSIZ], **argv2, *buffer;
+	fd_set set;
+	struct btt_message btt_cb;
+
+	FD_ZERO(&set);
+	FD_SET(fileno(stdin), &set);
 
 	mkdir(BTT_DIRECTORY, S_IRWXU|S_IRGRP|S_IXGRP);
 	print_commands(commands, UI_SUPPORTED_COMMANDS);
@@ -141,52 +147,102 @@ int main(int argc, char **argv)
 	errno = 0;
 
 	while (true) {
-		printf("> ");
-		label:
-		tmp = fgetc(stdin);
+		FD_ZERO(&set);
+		FD_SET(fileno(stdin), &set);
 
-		if (tmp!= EOF && (char)tmp != '\n') {
-			buff[0] = (char) tmp;
+		if (app_socket > 0)
+			FD_SET(app_socket, &set);
 
-			if (fgets(buff + sizeof(char), BUFSIZ, stdin) != NULL) {
-				argc2 = create_argc(buff);
-				argv2 = create_argv(buff, argc2);
-			} else {
-				BTT_LOG_S("Error: incorrect input.\n");
-				exit(EXIT_FAILURE);
-			}
-		} else {
-			continue;
+		if (select((app_socket > 0 ? app_socket : fileno(stdin)) + 1, &set,
+				NULL, NULL, NULL) == -1) {
+			BTT_LOG_E("ERROR: Select error. ");
+			return 1;
 		}
 
-		for (i = 0; i < UI_SUPPORTED_COMMANDS; i += 1) {
-			if (strcmp(argv2[0], commands[i].command) == 0) {
-				if (!commands[i].run) {
-					BTT_LOG_S("Not implemented yet");
+		if (FD_ISSET(fileno(stdin), &set)) {
+			label:
+			tmp = fgetc(stdin);
+
+			if (tmp!= EOF && (char)tmp != '\n') {
+				buff[0] = (char) tmp;
+
+				if (fgets(buff + sizeof(char), BUFSIZ, stdin) != NULL) {
+					argc2 = create_argc(buff);
+					argv2 = create_argv(buff, argc2);
 				} else {
-					if (app_socket < 0) {
-						BTT_LOG_S("Not connected to daemon.\n");
-						app_socket = connect_to_daemon_socket();
-					}
-
-					commands[i].run(argc2 - 1, argv2);
-
-					if (errno == EPIPE) {
-						app_socket = -1;
-						errno = 0;
-					}
+					BTT_LOG_S("Error: incorrect input.\n");
+					exit(EXIT_FAILURE);
 				}
-				break;
+			} else {
+				continue;
+			}
+
+			for (i = 0; i < UI_SUPPORTED_COMMANDS; i += 1) {
+				if (strcmp(argv2[0], commands[i].command) == 0) {
+					if (!commands[i].run) {
+						BTT_LOG_S("Not implemented yet");
+					} else {
+						if (app_socket < 0) {
+							BTT_LOG_S("Not connected to daemon.\n");
+							app_socket = connect_to_daemon_socket();
+						}
+
+						commands[i].run(argc2 - 1, argv2);
+
+						if (errno == EPIPE) {
+							app_socket = -1;
+							errno = 0;
+						}
+					}
+					break;
+				}
+			}
+
+			if (i >= UI_SUPPORTED_COMMANDS) {
+				BTT_LOG_S("Unknown main command: <%s>\n", argv2[0]);
+				free_argv(argv2, argc2);
+				print_commands(commands, UI_SUPPORTED_COMMANDS);
+			} else {
+				free_argv(argv2, argc2);
 			}
 		}
 
-		if (i >= UI_SUPPORTED_COMMANDS) {
-			BTT_LOG_S("Unknown main command: <%s>\n", argv2[0]);
-			free_argv(argv2, argc2);
-			print_commands(commands, UI_SUPPORTED_COMMANDS);
-		} else {
-			free_argv(argv2, argc2);
+		if (app_socket > 0 && FD_ISSET(app_socket, &set)) {
+			length = (int) recv(app_socket, &btt_cb,
+					sizeof(struct btt_message), MSG_PEEK);
+
+			if ((length == 0 || errno)) {
+				buffer = malloc(btt_cb.length);
+
+				if (buffer) {
+					recv(app_socket, buffer, 256, 0);
+					free(buffer);
+				}
+
+				app_socket = -1;
+				errno = 0;
+				continue;
+			}
+
+			if (btt_cb.command >= BTT_ADAPTER_CB_START &&
+					btt_cb.command <= BTT_ADAPTER_CB_END) {
+				handle_adapter_cb(&btt_cb);
+			} else if (btt_cb.command >= BTT_GATT_CLIENT_CB_START &&
+					btt_cb.command <= BTT_GATT_CLIENT_CB_END) {
+				handle_gattc_cb(&btt_cb);
+			} else if (btt_cb.command >= BTT_GATT_SERVER_CB_START &&
+					btt_cb.command <= BTT_GATT_SERVER_CB_END) {
+				handle_gatts_cb(&btt_cb);
+			} else {
+				buffer = malloc(btt_cb.length);
+
+				if (buffer) {
+					recv(app_socket, buffer, btt_cb.length, 0);
+					free(buffer);
+				}
+			}
 		}
+
 	}
 
 	return EXIT_SUCCESS;

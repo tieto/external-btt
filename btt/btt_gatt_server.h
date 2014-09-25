@@ -275,4 +275,5 @@ struct btt_gatt_server_cb_response_confirmation {
 	int handle;
 };
 
+extern void handle_gatts_cb(const struct btt_message *btt_cb);
 extern void run_gatt_server(int argc, char **argv);

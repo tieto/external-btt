@@ -431,4 +431,5 @@ struct btt_gatt_client_cb_notify {
 	btgatt_notify_params_t p_data;
 };
 
+extern void handle_gattc_cb(const struct btt_message *btt_cb);
 extern void run_gatt_client(int argc, char **argv);
