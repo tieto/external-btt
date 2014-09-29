@@ -46,7 +46,7 @@ static struct command commands[] = {
 static void run_help(int argc, char **argv)
 {
 	BTT_LOG_S("BTT - Bluedroid Test Tool aka Bluetooth Test Tool\n"
-		"Copyright @ 2013 Tieto Corporation\n\n"
+		"Copyright @ 2013-2014 Tieto Corporation\n\n"
 		"Version: %u.%u.%u\n\n"
 		"Authors:\n"
 		"\t""Marcin Kraglak         <marcin.kraglak@tieto.com>\n"
