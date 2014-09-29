@@ -27,6 +27,9 @@ extern int socket_remote;
 void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 		const int socket_remote)
 {
+	struct btt_gatt_server_cb_bt_status cb;
+	bt_status_t status = BT_STATUS_FAIL;
+
 	switch (btt_msg->command) {
 	case BTT_GATT_SERVER_CMD_REGISTER_SERVER:
 	{
@@ -37,27 +40,19 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->register_server(&msg.UUID);
+		status = gatt_server_if->register_server(&msg.UUID);
 		break;
 	}
 	case BTT_GATT_SERVER_CMD_UNREGISTER_SERVER:
 	{
 		struct btt_gatt_server_unreg msg;
-		struct btt_gatt_server_cb_status  btt_cb;
-
-		btt_cb.status = -1;
 
 		if (!RECV(&msg,socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_unreg\n");
 			return;
 		}
 
-		FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_END);
-		btt_cb.status = gatt_server_if->unregister_server(msg.server_if);
-
-		if (send(socket_remote, &btt_cb,
-				sizeof(struct btt_gatt_server_cb_status), 0) == -1)
-			BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
+		status = gatt_server_if->unregister_server(msg.server_if);
 
 		break;
 	}
@@ -70,7 +65,7 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->connect(msg.server_if, &msg.bd_addr, msg.is_direct);
+		status = gatt_server_if->connect(msg.server_if, &msg.bd_addr, msg.is_direct);
 		break;
 	}
 	case BTT_GATT_SERVER_CMD_DISCONNECT:
@@ -82,7 +77,7 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->disconnect(msg.server_if, &msg.bd_addr, msg.conn_id);
+		status = gatt_server_if->disconnect(msg.server_if, &msg.bd_addr, msg.conn_id);
 		break;
 	}
 	case BTT_GATT_SERVER_CMD_ADD_SERVICE:
@@ -94,7 +89,7 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->add_service(msg.server_if, &msg.srvc_id, msg.num_handles);
+		status = gatt_server_if->add_service(msg.server_if, &msg.srvc_id, msg.num_handles);
 		break;
 	}
 	case BTT_GATT_SERVER_REQ_ADD_INCLUDED_SERVICE:
@@ -106,7 +101,7 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->add_included_service( msg.server_if, msg.service_handle,
+		status = gatt_server_if->add_included_service( msg.server_if, msg.service_handle,
 				msg.included_handle);
 		break;
 	}
@@ -119,7 +114,7 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->add_characteristic(msg.server_if, msg.service_handle, &msg.uuid,
+		status = gatt_server_if->add_characteristic(msg.server_if, msg.service_handle, &msg.uuid,
 				msg.properties, msg.permissions);
 		break;
 	}
@@ -132,7 +127,7 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->add_descriptor(msg.server_if, msg.service_handle,
+		status = gatt_server_if->add_descriptor(msg.server_if, msg.service_handle,
 				&msg.uuid, msg.permissions);
 		break;
 	}
@@ -145,7 +140,7 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->start_service(msg.server_if, msg.service_handle,
+		status = gatt_server_if->start_service(msg.server_if, msg.service_handle,
 				msg.transport);
 		break;
 	}
@@ -158,7 +153,7 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->stop_service(msg.server_if, msg.service_handle);
+		status = gatt_server_if->stop_service(msg.server_if, msg.service_handle);
 		break;
 	}
 	case BTT_GATT_SERVER_CMD_DELETE_SERVICE:
@@ -176,24 +171,15 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 	case BTT_GATT_SERVER_CMD_SEND_INDICATION:
 	{
 		struct btt_gatt_server_send_indication msg;
-		struct btt_gatt_server_cb_status btt_cb;
 
-		btt_cb.status = -1;
 
 		if (!RECV(&msg, socket_remote)) {
 			BTT_LOG_E("Received invalid btt_gatt_server_send_indication\n");
 			return;
 		}
 
-		btt_cb.status = gatt_server_if->send_indication(msg.server_if, msg.attribute_handle,
+		status = gatt_server_if->send_indication(msg.server_if, msg.attribute_handle,
 				msg.conn_id, msg.len, msg.confirm, &msg.p_value[0]);
-
-		FILL_HDR(btt_cb, BTT_GATT_SERVER_CB_END);
-
-		if (send(socket_remote, &btt_cb,
-				sizeof(struct btt_gatt_server_cb_status), 0) == -1)
-			BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
-
 		break;
 	}
 	case BTT_GATT_SERVER_CMD_SEND_RESPONSE:
@@ -205,12 +191,21 @@ void handle_gatt_server_cmd(const struct btt_message *btt_msg,
 			return;
 		}
 
-		gatt_server_if->send_response(msg.conn_id, msg.trans_id, msg.status,
+		status = gatt_server_if->send_response(msg.conn_id, msg.trans_id, msg.status,
 				&msg.response);
 		break;
 	}
-	default: break;
+	default:
+		status = BT_STATUS_UNHANDLED;
+		break;
 	}
+
+	FILL_HDR(cb, BTT_GATT_SERVER_CB_BT_STATUS);
+	cb.status = status;
+
+	if (send(socket_remote, &cb,
+			sizeof(struct btt_gatt_server_cb_bt_status), 0) == -1)
+		 BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
 }
 
 /*************************************************************/

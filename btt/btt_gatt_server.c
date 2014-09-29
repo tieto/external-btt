@@ -245,16 +245,17 @@ void handle_gatts_cb(const struct btt_message *btt_cb)
 	char *buffer;
 
 	switch (btt_cb->command) {
-	case BTT_GATT_SERVER_CB_END:
+	case BTT_GATT_SERVER_CB_BT_STATUS:
 	{
-		struct btt_gatt_server_cb_status cb;
+		struct btt_gatt_server_cb_bt_status cb;
 
 		if (!RECV(&cb, app_socket)) {
 			BTT_LOG_S("Error: incorrect size of received structure.\n");
 			return;
 		}
 
-		BTT_LOG_S("\nGATTS: Status request - %s.\n",!cb.status ? "OK" : "ERROR");
+		BTT_LOG_S("\nGATTS: Request status: %s\n",
+				bt_status_string[cb.status]);
 
 		break;
 	}

@@ -25,27 +25,29 @@ void handle_adapter_cmd(const struct btt_message *btt_msg,
 		const int socket_remote)
 {
 	bool do_recv = FALSE;
+	struct btt_cb_adapter_bt_status cb;
+	bt_status_t status = BT_STATUS_FAIL;
 
 	switch (btt_msg->command) {
 	case BTT_CMD_ADAPTER_UP:
 		/* TODO: detect status of adapter and fix reply*/
-		bluetooth_if->enable();
+		status = bluetooth_if->enable();
 		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_DOWN:
-		bluetooth_if->disable();
+		status = bluetooth_if->disable();
 		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_NAME:
-		bluetooth_if->get_adapter_property(BT_PROPERTY_BDNAME);
+		status = bluetooth_if->get_adapter_property(BT_PROPERTY_BDNAME);
 		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_ADDRESS:
-		bluetooth_if->get_adapter_property(BT_PROPERTY_BDADDR);
+		status = bluetooth_if->get_adapter_property(BT_PROPERTY_BDADDR);
 		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_SCAN:
-		bluetooth_if->start_discovery();
+		status = bluetooth_if->start_discovery();
 		do_recv = TRUE;
 		break;
 	case BTT_CMD_ADAPTER_SCAN_MODE: {
@@ -69,7 +71,7 @@ void handle_adapter_cmd(const struct btt_message *btt_msg,
 
 		prop.val = &scan_mode;
 
-		bluetooth_if->set_adapter_property(&prop);
+		status = bluetooth_if->set_adapter_property(&prop);
 		break;
 	}
 	case BTT_CMD_ADAPTER_PAIR: {
@@ -77,7 +79,7 @@ void handle_adapter_cmd(const struct btt_message *btt_msg,
 
 		recv(socket_remote, &msg, sizeof(msg), 0);
 
-		bluetooth_if->create_bond((bt_bdaddr_t *)msg.addr);
+		status = bluetooth_if->create_bond((bt_bdaddr_t *)msg.addr);
 		break;
 	}
 	case BTT_CMD_ADAPTER_UNPAIR: {
@@ -85,7 +87,7 @@ void handle_adapter_cmd(const struct btt_message *btt_msg,
 
 		recv(socket_remote, &msg, sizeof(msg), 0);
 
-		bluetooth_if->remove_bond((bt_bdaddr_t *)msg.addr);
+		status = bluetooth_if->remove_bond((bt_bdaddr_t *)msg.addr);
 		break;
 	}
 	case BTT_RSP_PIN_REPLY: {
@@ -93,7 +95,7 @@ void handle_adapter_cmd(const struct btt_message *btt_msg,
 
 		recv(socket_remote, &msg, sizeof(msg), 0);
 
-		bluetooth_if->pin_reply((bt_bdaddr_t const *)msg.addr,
+		status = bluetooth_if->pin_reply((bt_bdaddr_t const *)msg.addr,
 				msg.accept, msg.pin_len,
 				(bt_pin_code_t *)msg.pin_code);
 		break;
@@ -103,18 +105,27 @@ void handle_adapter_cmd(const struct btt_message *btt_msg,
 
 		recv(socket_remote, &msg, sizeof(msg), 0);
 
-		bluetooth_if->ssp_reply((bt_bdaddr_t const *)msg.addr,
+		status = bluetooth_if->ssp_reply((bt_bdaddr_t const *)msg.addr,
 				(bt_ssp_variant_t)msg.variant,
 				msg.accept, msg.passkey);
 		break;
 	}
 	default:
+		status = BT_STATUS_UNHANDLED;
 		break;
 	}
 
 	if (do_recv)
 		recv(socket_remote, &btt_msg,
 						sizeof(struct btt_message), 0);
+
+	FILL_HDR(cb, BTT_ADAPTER_CB_BT_STATUS);
+	cb.status = status;
+
+	if (send(socket_remote, (const char *) &cb,
+			sizeof(struct btt_cb_adapter_bt_status), 0) == -1) {
+		BTT_LOG_E("%s:System Socket Error\n", __FUNCTION__);
+	}
 }
 
 /*
