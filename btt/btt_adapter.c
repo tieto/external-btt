@@ -257,6 +257,19 @@ void handle_adapter_cb(const struct btt_message *btt_cb)
 	char *buffer;
 
 	switch (btt_cb->command) {
+	case BTT_ADAPTER_CB_BT_STATUS: {
+		struct btt_cb_adapter_bt_status status;
+
+		if (!RECV(&status, app_socket)) {
+			BTT_LOG_E("ERROR: Incorrect size of received structure.");
+			return;
+		}
+
+		BTT_LOG_S("\nADAPTER: Request status: %s\n",
+				bt_status_string[status.status]);
+
+		break;
+	}
 	case BTT_ADAPTER_PIN_REQUEST: {
 		struct btt_cb_adapter_pin_request pin_req;
 

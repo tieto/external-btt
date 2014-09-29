@@ -228,12 +228,6 @@ struct btt_gatt_server_cb_delete_service {
 	int srvc_handle;
 };
 
-struct btt_gatt_server_cb_status {
-	struct btt_message hdr;
-
-	int status;
-};
-
 struct btt_gatt_server_cb_request_read {
 	struct btt_message hdr;
 
@@ -273,6 +267,12 @@ struct btt_gatt_server_cb_response_confirmation {
 
 	int status;
 	int handle;
+};
+
+struct btt_gatt_server_cb_bt_status {
+	struct btt_message hdr;
+
+	bt_status_t status;
 };
 
 extern void handle_gatts_cb(const struct btt_message *btt_cb);
